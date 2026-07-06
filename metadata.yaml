@@ -1,0 +1,24 @@
+project:
+  name: Diabetes Risk Prediction
+  version: 1.0.0
+  author: Your Name
+
+dataset:
+  source: UCI ML Repository
+  id: 891
+  name: CDC Diabetes Health Indicators
+
+model:
+  algorithm: RandomForestClassifier
+  version: 1.0.0
+
+training:
+  random_state: 42
+  test_size: 0.2
+
+deployment:
+  api: FastAPI
+  dashboard: Streamlit
+
+registry:
+  latest_model: model_v1.pkl

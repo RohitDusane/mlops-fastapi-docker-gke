@@ -1,0 +1,11 @@
+train:
+  test_size: 0.2
+  random_state: 42
+  n_trials: 30            # Optuna trials for hyperparameter search
+  cv_folds: 5
+  target_metric: roc_auc  # metric Optuna optimizes toward
+
+mlflow:
+  experiment_name: diabetes-risk-screening
+  tracking_uri: http://mlflow-tracking.mlflow.svc.cluster.local:5000
+  registered_model_name: diabetes-risk-model

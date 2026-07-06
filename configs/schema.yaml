@@ -1,0 +1,77 @@
+# Schema used by DataValidation — dtype, range, and domain rules per column.
+# Ranges/domains follow the CDC BRFSS 2015 codebook (see docs/dataset.md).
+
+columns:
+  HighBP:
+    dtype: int
+    domain: [0, 1]
+  HighChol:
+    dtype: int
+    domain: [0, 1]
+  CholCheck:
+    dtype: int
+    domain: [0, 1]
+  BMI:
+    dtype: float
+    range: [10, 100]
+  Smoker:
+    dtype: int
+    domain: [0, 1]
+  Stroke:
+    dtype: int
+    domain: [0, 1]
+  HeartDiseaseorAttack:
+    dtype: int
+    domain: [0, 1]
+  PhysActivity:
+    dtype: int
+    domain: [0, 1]
+  Fruits:
+    dtype: int
+    domain: [0, 1]
+  Veggies:
+    dtype: int
+    domain: [0, 1]
+  HvyAlcoholConsump:
+    dtype: int
+    domain: [0, 1]
+  AnyHealthcare:
+    dtype: int
+    domain: [0, 1]
+  NoDocbcCost:
+    dtype: int
+    domain: [0, 1]
+  GenHlth:
+    dtype: int
+    range: [1, 5]
+  MentHlth:
+    dtype: int
+    range: [0, 30]
+  PhysHlth:
+    dtype: int
+    range: [0, 30]
+  DiffWalk:
+    dtype: int
+    domain: [0, 1]
+  Sex:
+    dtype: int
+    domain: [0, 1]
+  Age:
+    dtype: int
+    range: [1, 13]
+  Education:
+    dtype: int
+    range: [1, 6]
+  Income:
+    dtype: int
+    range: [1, 8]
+  Diabetes_binary:
+    dtype: int
+    domain: [0, 1, 2]
+
+numerical_columns:
+  - BMI
+  - MentHlth
+  - PhysHlth
+
+target_column: Diabetes_binary

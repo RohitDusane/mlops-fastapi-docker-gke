@@ -192,3 +192,14 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 
 diabetes_model.pkl
+prj_str.py
+db_risk/
+.vscode/
+mlruns/
+logs/
+artifacts/
+data/processed/
+data/external/
+data/raw/
+notebooks/
+k8s-deploy.yml/
