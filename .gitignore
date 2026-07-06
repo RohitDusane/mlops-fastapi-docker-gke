@@ -200,6 +200,6 @@ logs/
 artifacts/
 data/processed/
 data/external/
-data/raw/
+# data/raw/
 notebooks/
 k8s-deploy.yml/
