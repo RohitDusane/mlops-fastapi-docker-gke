@@ -1,7 +1,0 @@
-[core]
-    remote = origin
-['remote "origin"']
-    url = https://dagshub.com/stat.data247/mlops_data_db_risk.dvc
-    auth = basic
-    user = stat.data247
-    password = e69a8bbe6dc9bd7211c9b35b95865a2e166685b1
