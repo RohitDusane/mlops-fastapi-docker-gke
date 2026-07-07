@@ -12,7 +12,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     model_source: str = "local"          # "local" or "mlflow"
-    model_path: str = "artifacts/model_trainer/model.pkl"
+    model_path: str = "artifacts/model_trainer/model.joblib"
+    metadata_path: str = "artifacts/model_trainer/metadata.json"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
     mlflow_model_name: str = "diabetes-risk-model"

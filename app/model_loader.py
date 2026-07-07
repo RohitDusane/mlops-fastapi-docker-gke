@@ -9,7 +9,7 @@ the FastAPI app object.
 import logging
 from pathlib import Path
 from typing import Optional
-
+import json
 import joblib
 
 from app.config import settings
@@ -35,13 +35,31 @@ class ModelState:
         dataclass, not a dict — access via .model/.threshold/.model_type/
         .feature_columns/.mlflow_run_id, never bundle["key"] or bundle.get().
         """
-        bundle = joblib.load(Path(settings.model_path))
-        self.model = bundle.model
-        self.threshold = bundle.threshold
-        self.model_type = bundle.model_type
-        self.feature_order = bundle.feature_columns
-        self.model_version = f"local:{bundle.model_type}:{bundle.mlflow_run_id[:8]}"
+        model_path = Path(settings.model_path)
+        metadata_path = Path(settings.metadata_path)
 
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model not found: {model_path}")
+
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Metadata not found: {metadata_path}")
+
+        logger.info("Loading model from %s", model_path)
+        # Load pipeline
+        self.model = joblib.load(model_path)
+
+        # Load metadata
+        with metadata_path.open("r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        self.threshold = float(metadata["threshold"])
+        self.model_type = metadata["model_type"]
+        self.feature_order = metadata["feature_columns"]
+
+        run_id = metadata.get("mlflow_run_id", "local")
+        self.model_version = f"local:{self.model_type}:{run_id[:8]}"
+
+        
     def load_mlflow(self):
         """
         Pulls the current Production-stage model from the MLflow Registry,
@@ -86,15 +104,23 @@ class ModelState:
                 logger.info("Loading model from local artifact: %s", settings.model_path)
                 self.load_local()
             logger.info(
-                "Model loaded — version=%s type=%s threshold=%.3f features=%d",
-                self.model_version, self.model_type, self.threshold, len(self.feature_order),
+                "Model loaded successfully | "
+                "version=%s | "
+                "type=%s | "
+                "threshold=%.3f | "
+                "features=%d",
+                self.model_version,
+                self.model_type,
+                self.threshold,
+                len(self.feature_order),
             )
-        except Exception as e:
+            logger.debug("Feature order: %s", self.feature_order)
+        except Exception:
             # Fail loudly in logs, don't crash the process — /health reports
             # unhealthy and the K8s readiness probe holds traffic back
             # instead of the pod crash-looping.
-            logger.error("Failed to load model: %s", e)
-            self.model = None
+            logger.exception("Failed to load model: %s")
+            raise
 
 
 model_state = ModelState()

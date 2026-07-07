@@ -1,5 +1,4 @@
 import sys
-
 import mlflow
 import mlflow.sklearn
 import numpy as np
@@ -8,6 +7,7 @@ from lightgbm import LGBMClassifier
 from mlflow.models.signature import infer_signature
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+import joblib
 
 # try:
 #     from xgboost import XGBClassifier
@@ -29,14 +29,14 @@ from sklearn.pipeline import Pipeline
 
 from diabetes_risk_prediction.entity.artifact_entity import (
     DataTransformationArtifact,
-    ModelBundle,
     ModelTrainerArtifact,
 )
 from diabetes_risk_prediction.entity.config_entity import ModelTrainerConfig
 from diabetes_risk_prediction.exception.custom_exception import CustomException
 from diabetes_risk_prediction.logger.logging import logging
-from diabetes_risk_prediction.utils.common import load_numpy_array_data, load_object, save_object
-
+from diabetes_risk_prediction.utils.common import load_numpy_array_data, load_object
+import json
+import os
 
 class ModelTrainer:
     def __init__(
@@ -372,16 +372,25 @@ class ModelTrainer:
                 )
                 run_id = parent_run.info.run_id
 
-            model_path = f"{self.config.trainer_dir}/{self.config.trained_model_file_name}"
-            bundle = ModelBundle(
-                model=serving_pipeline,
-                threshold=threshold,
-                model_type=model_type,
-                feature_columns=self.data_transformation_artifact.feature_columns,
-                mlflow_run_id=run_id,
-            )
-            save_object(model_path, bundle)
+            # model_path = f"{self.config.trainer_dir}/{self.config.trained_model_file_name}"
+            model_dir = self.config.trainer_dir
+            os.makedirs(model_dir, exist_ok=True)
 
+            model_path = os.path.join(model_dir, "model.joblib")
+            metadata_path = os.path.join(model_dir, "metadata.json")
+
+            joblib.dump(serving_pipeline, model_path)
+
+            metadata = {
+                "threshold": float(threshold),
+                "model_type": model_type,
+                "feature_columns": self.data_transformation_artifact.feature_columns,
+                "mlflow_run_id": run_id,
+            }
+
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=4)
+            
             logging.info(f"Model training completed — algorithm: {model_type}, threshold: {threshold:.3f}")
 
             return ModelTrainerArtifact(

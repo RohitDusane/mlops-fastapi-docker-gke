@@ -13,6 +13,7 @@ import json
 import logging
 import time
 import uuid
+import joblib
 from contextlib import asynccontextmanager
 
 import numpy as np
