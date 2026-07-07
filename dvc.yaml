@@ -1,25 +1,14 @@
 stages:
-  fetch_data:
-    cmd: python src/diabetes_risk_prediction/components/data_ingestion.py
-    outs:
-      - data/raw/raw_data.csv
-
-  train:
-    cmd: python src/diabetes_risk_prediction/components/model_trainer.py
+  train_pipeline:
+    cmd: python src/diabetes_risk_prediction/pipeline/training_pipeline.py
     deps:
       - data/raw/raw_data.csv
-      - src/diabetes_risk_prediction/components/model_trainer.py
+      - src
+      - config/params.yaml
     params:
-      - train.test_size
-      - train.random_state
-      - train.n_trials
-      - train.cv_folds
-      - train.target_metric
-      - mlflow.experiment_name
-      - mlflow.tracking_uri
-      - mlflow.registered_model_name
+      - config/params.yaml
     outs:
-      - artifacts/model_trainer/model.pkl
+      - artifacts
     metrics:
       - artifacts/metrics.json:
           cache: false

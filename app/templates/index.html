@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diabetes Risk Screening</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <section class="hero">
+      <div>
+        <div class="hero-eyebrow">Screening tool, not a diagnosis</div>
+        <h1>Know where you stand on diabetes risk, in under two minutes.</h1>
+        <p>
+          Answer questions about your health history, lifestyle, and access to care.
+          The model returns a probability-based risk estimate — grounded in 253,000
+          real health survey responses, not a rule-of-thumb calculator.
+        </p>
+        <button class="hero-cta" id="scroll-to-form">Start assessment →</button>
+      </div>
+      <div class="hero-visual">
+        <div class="panel gauge-panel" id="hero-gauge-panel">
+          <svg width="220" height="180" viewBox="0 0 220 180" id="hero-gauge-svg"></svg>
+        </div>
+      </div>
+    </section>
+
+    <div class="main-grid" id="assessment-form">
+      <form class="panel" id="assessment-form-el">
+        <div class="form-section">
+          <div class="section-label">Vitals &amp; self-reported health</div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="BMI">BMI</label>
+              <input type="number" id="BMI" min="10" max="100" step="0.1" value="26.0" required />
+            </div>
+            <div class="field">
+              <label for="GenHlth">General health</label>
+              <select id="GenHlth">
+                <option value="1">Excellent</option>
+                <option value="2" selected>Very good</option>
+                <option value="3">Good</option>
+                <option value="4">Fair</option>
+                <option value="5">Poor</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="MentHlth">Poor mental health (days, past 30)</label>
+              <input type="number" id="MentHlth" min="0" max="30" value="0" required />
+            </div>
+            <div class="field">
+              <label for="PhysHlth">Poor physical health (days, past 30)</label>
+              <input type="number" id="PhysHlth" min="0" max="30" value="0" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-label">Medical history</div>
+          <div class="toggle-field" data-field="HighBP"><span>High blood pressure</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="HighChol"><span>High cholesterol</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="CholCheck" data-default="true"><span>Cholesterol check in past 5 years</span><div class="toggle" data-on="true"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="Stroke"><span>Ever had a stroke</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="HeartDiseaseorAttack"><span>Heart disease or heart attack</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="DiffWalk"><span>Difficulty walking / climbing stairs</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-label">Lifestyle</div>
+          <div class="toggle-field" data-field="Smoker"><span>Smoked 100+ cigarettes in lifetime</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="PhysActivity" data-default="true"><span>Physical activity in past 30 days</span><div class="toggle" data-on="true"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="Fruits" data-default="true"><span>Eats fruit 1+ times/day</span><div class="toggle" data-on="true"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="Veggies" data-default="true"><span>Eats vegetables 1+ times/day</span><div class="toggle" data-on="true"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="HvyAlcoholConsump"><span>Heavy alcohol consumption</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-label">Access to care</div>
+          <div class="toggle-field" data-field="AnyHealthcare" data-default="true"><span>Has any health care coverage</span><div class="toggle" data-on="true"><div class="toggle-knob"></div></div></div>
+          <div class="toggle-field" data-field="NoDocbcCost"><span>Skipped a doctor visit due to cost (past 12mo)</span><div class="toggle"><div class="toggle-knob"></div></div></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-label">Demographics</div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="Sex">Sex</label>
+              <select id="Sex"><option value="0">Female</option><option value="1" selected>Male</option></select>
+            </div>
+            <div class="field">
+              <label for="Age">Age range</label>
+              <select id="Age">
+                <option value="1">18–24</option><option value="2">25–29</option><option value="3">30–34</option>
+                <option value="4">35–39</option><option value="5">40–44</option><option value="6" selected>45–49</option>
+                <option value="7">50–54</option><option value="8">55–59</option><option value="9">60–64</option>
+                <option value="10">65–69</option><option value="11">70–74</option><option value="12">75–79</option><option value="13">80+</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="Education">Education</label>
+              <select id="Education">
+                <option value="1">Never attended / kindergarten only</option>
+                <option value="2">Elementary</option>
+                <option value="3">Some high school</option>
+                <option value="4">High school graduate</option>
+                <option value="5" selected>Some college / technical school</option>
+                <option value="6">College graduate</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="Income">Household income</label>
+              <select id="Income">
+                <option value="1">&lt; $10k</option><option value="2">$10k–15k</option><option value="3">$15k–20k</option>
+                <option value="4">$20k–25k</option><option value="5">$25k–35k</option><option value="6" selected>$35k–50k</option>
+                <option value="7">$50k–75k</option><option value="8">$75k+</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button class="submit-btn" type="submit" id="submit-btn">Assess risk</button>
+          <span class="submit-error" id="submit-error"></span>
+        </div>
+      </form>
+
+      <div class="result-sticky">
+        <div class="panel gauge-panel" id="result-gauge-panel">
+          <h3 class="card-title">Your diabetes screening score</h3>
+          <svg width="220" height="180" viewBox="0 0 220 180" id="result-gauge-svg"></svg>
+          <div id="risk-number" class="risk-number">—</div>
+          <div id="risk-label" class="risk-label">Fill in the form and submit</div>
+        </div>
+
+        <div class="panel recommendation-card" style="margin-top:20px">
+          <h3>Why this score?</h3>
+          <ul id="risk-reasons"><li>Submit the assessment to see your reasons here</li></ul>
+          <h3>Suggestions</h3>
+          <div id="suggestions"></div>
+        </div>
+
+        <div class="panel model-card" style="margin-top:20px">
+          <h3>Model information</h3>
+          <p>Version: <span id="model-version">—</span></p>
+        </div>
+
+        <div class="panel disclaimer" style="margin-top:20px">
+          This is a statistical screening risk estimate based on self-reported health survey
+          indicators. It is NOT a medical diagnosis. Consult a licensed healthcare professional
+          for any clinical decision.
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span>Diabetes Risk Screening — CDC BRFSS 2015 model</span>
+      <span>Not a substitute for professional medical advice</span>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', path='js/main.js') }}"></script>
+</body>
+</html>

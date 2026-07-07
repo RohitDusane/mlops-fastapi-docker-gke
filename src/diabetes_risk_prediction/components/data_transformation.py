@@ -42,10 +42,7 @@ class DataTransformation:
     def initiate_data_transformation(self) -> DataTransformationArtifact:
         try:
             if not self.data_validation_artifact.validation_status:
-                raise CustomException(
-                    f"Cannot transform data — validation failed: {self.data_validation_artifact.message}",
-                    sys,
-                )
+                raise CustomException(f"Cannot transform data — validation failed: {self.data_validation_artifact.message}", sys,)
 
             logging.info("Starting data transformation.")
             train_df = pd.read_csv(self.data_validation_artifact.valid_train_file_path)
@@ -78,6 +75,7 @@ class DataTransformation:
                 transformed_train_file_path=train_path,
                 transformed_test_file_path=test_path,
                 preprocessor_object_file_path=preprocessor_path,
+                feature_columns=feature_cols,
             )
         except Exception as e:
             raise CustomException(f"Error during data transformation: {e}", sys)

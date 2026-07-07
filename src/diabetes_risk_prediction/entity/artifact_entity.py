@@ -24,6 +24,23 @@ class DataTransformationArtifact:
     transformed_train_file_path: str
     transformed_test_file_path: str
     preprocessor_object_file_path: str
+    feature_columns: list
+
+
+@dataclass
+class ModelBundle:
+    """
+    What actually gets pickled and served — not just the raw estimator.
+    Bundling the decision threshold with the model prevents the two from
+    drifting apart (e.g. someone redeploying a new model.pkl while the
+    serving code still hardcodes 0.5). Anything loading this artifact
+    should read `bundle.threshold`, not assume 0.5.
+    """
+    model: object
+    threshold: float
+    model_type: str
+    feature_columns: list
+    mlflow_run_id: str
 
 
 @dataclass
@@ -33,6 +50,8 @@ class ModelTrainerArtifact:
     test_metrics: dict
     mlflow_run_id: str
     best_hyperparameters: dict
+    model_type: str
+    decision_threshold: float
 
 
 @dataclass

@@ -197,6 +197,9 @@ db_risk/
 .vscode/
 mlruns/
 logs/
+artifacts/data_validation/
+artifacts/data_transformation/
+artifacts/model_trainer/
 # artifacts/ingestion/
 data/processed/
 data/external/

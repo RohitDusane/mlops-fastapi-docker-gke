@@ -1,0 +1,155 @@
+:root {
+  --bg-deep: #0a1120;
+  --bg-panel: #121b2e;
+  --bg-panel-raised: #182640;
+  --border-subtle: #24314a;
+  --accent-teal: #2dd4bf;
+  --accent-teal-glow: rgba(45, 212, 191, 0.35);
+  --accent-amber: #f2a65a;
+  --accent-red: #ef5b5b;
+  --text-primary: #e8eef5;
+  --text-muted: #8ca0b3;
+  --text-faint: #5c7086;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at top, #0e1830 0%, var(--bg-deep) 55%);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+:focus-visible { outline: 2px solid var(--accent-teal); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+.app-shell { max-width: 1200px; margin: 0 auto; padding: 0 24px 96px; }
+
+.hero {
+  display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center;
+  padding: 72px 0 56px; border-bottom: 1px solid var(--border-subtle);
+}
+.hero-eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent-teal); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+.hero-eyebrow::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-teal);
+  box-shadow: 0 0 8px 2px var(--accent-teal-glow);
+}
+.hero h1 { font-size: 44px; line-height: 1.1; margin-bottom: 20px; }
+.hero p { color: var(--text-muted); font-size: 17px; line-height: 1.6; max-width: 46ch; margin-bottom: 28px; }
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 10px; background: var(--accent-teal); color: #06231f;
+  font-family: var(--font-display); font-weight: 600; font-size: 15px; padding: 13px 24px; border-radius: 8px;
+  border: none; cursor: pointer; transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+.hero-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 24px -8px var(--accent-teal-glow); }
+.hero-visual { display: flex; justify-content: center; }
+
+.panel {
+  background: linear-gradient(180deg, var(--bg-panel-raised) 0%, var(--bg-panel) 100%);
+  border: 1px solid var(--border-subtle); border-radius: 14px; padding: 28px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.gauge-panel { display: flex; flex-direction: column; align-items: center; perspective: 800px; }
+.gauge-panel:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(45, 212, 191, 0.12); }
+.gauge-inner { transition: transform 0.15s ease-out; transform-style: preserve-3d; display: flex; flex-direction: column; align-items: center; }
+
+.section-label {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-faint); margin-bottom: 18px;
+}
+
+.main-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; margin-top: 40px; align-items: start; }
+@media (max-width: 880px) { .hero, .main-grid { grid-template-columns: 1fr; } }
+.result-sticky { position: sticky; top: 24px; }
+
+.form-section { margin-bottom: 28px; }
+.form-section:last-child { margin-bottom: 0; }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field label { font-size: 13px; color: var(--text-muted); }
+.field input[type="number"], .field select {
+  background: var(--bg-deep); border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 10px 12px; color: var(--text-primary); font-family: var(--font-mono); font-size: 14px;
+}
+.field input[type="number"]:focus, .field select:focus { border-color: var(--accent-teal); }
+
+.toggle-field { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+.toggle-field span { font-size: 13px; color: var(--text-muted); }
+.toggle {
+  position: relative; width: 44px; height: 24px; border-radius: 12px; background: var(--bg-deep);
+  border: 1px solid var(--border-subtle); cursor: pointer; transition: background 0.2s var(--ease-out); flex-shrink: 0;
+}
+.toggle[data-on="true"] { background: var(--accent-teal); border-color: var(--accent-teal); }
+.toggle-knob {
+  position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.4); transition: transform 0.2s var(--ease-out);
+}
+.toggle[data-on="true"] .toggle-knob { transform: translateX(20px); background: #06231f; }
+
+.submit-row { margin-top: 32px; display: flex; align-items: center; gap: 16px; }
+.submit-btn {
+  background: var(--accent-teal); color: #06231f; font-family: var(--font-display); font-weight: 600;
+  font-size: 15px; padding: 13px 28px; border-radius: 8px; border: none; cursor: pointer;
+  transition: transform 0.15s var(--ease-out);
+}
+.submit-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.submit-error { color: var(--accent-red); font-size: 13px; }
+
+.card-title { text-align: center; font-size: 18px; color: var(--text-primary); margin-bottom: 8px; }
+
+.risk-number {
+  font-size: 56px; font-weight: 700; text-align: center; color: var(--accent-teal);
+  font-family: var(--font-mono); margin-top: 8px;
+}
+
+/* Was completely unstyled before — class was set in HTML/JS but no rule
+   ever matched it, so the label never actually showed a risk color. */
+.risk-label {
+  text-align: center; font-size: 14px; font-weight: 700; letter-spacing: 2px;
+  margin-top: 4px; font-family: var(--font-mono);
+}
+.risk-label.low { color: var(--accent-teal); }
+.risk-label.moderate { color: var(--accent-amber); }
+.risk-label.high { color: var(--accent-red); }
+
+.risk-badge {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 14px; border-radius: 100px; margin-top: 4px;
+}
+.risk-badge[data-level="low"] { background: rgba(45, 212, 191, 0.12); color: var(--accent-teal); }
+.risk-badge[data-level="moderate"] { background: rgba(242, 166, 90, 0.12); color: var(--accent-amber); }
+.risk-badge[data-level="high"] { background: rgba(239, 91, 91, 0.12); color: var(--accent-red); }
+
+.recommendation-card h3, .model-card h3 { color: var(--text-primary); margin-bottom: 20px; font-size: 15px; }
+.recommendation-card ul { padding-left: 0; list-style: none; margin: 0 0 20px; }
+.recommendation-card li {
+  background: #111c30; padding: 12px; border-radius: 10px; margin-bottom: 10px; color: #cbd5e1; font-size: 14px;
+}
+.suggestion { background: #162238; padding: 14px; border-radius: 12px; margin: 10px 0; font-size: 14px; }
+
+.model-card { font-family: var(--font-mono); color: var(--text-muted); font-size: 13px; }
+.model-card p { margin: 6px 0; }
+
+.disclaimer {
+  font-size: 12px; color: var(--text-faint); line-height: 1.6;
+}
+
+.footer {
+  margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border-subtle); color: var(--text-faint);
+  font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}

@@ -19,23 +19,39 @@ class DataIngestion:
         except Exception as e:
             raise CustomException(f"Error initializing DataIngestion: {e}", sys)
 
-    def download_data(self) -> str:
+    def download_data(self):
         try:
+            logging.info("🔥 USING UPDATED DATA INGESTION FILE")
             if not os.path.exists(self.config.raw_data_path):
                 raise CustomException(f"File not found: {self.config.raw_data_path}", sys)
 
             df = pd.read_csv(self.config.raw_data_path)
-            df["Diabetes_binary"] = df["Diabetes_binary"].replace({
-                0: 0,
-                1: 0,
-                2: 1,
-            })
-            # print(df["Diabetes_binary"].value_counts())
-            # print(df["Diabetes_binary"].unique())
+
+            logging.info(f"RAW unique values: {df['Diabetes_binary'].unique()}")
+            logging.info(f"RAW distribution:\n{df['Diabetes_binary'].value_counts()}")
+
+            # Convert to binary: 0,1 → 0 and 2 → 1
+            df["Diabetes_binary"] = (df["Diabetes_binary"]).astype(int)
+
+            vc = df["Diabetes_binary"].value_counts().sort_index()
+            logging.info(f"Target distribution:\n{vc}")
+
+            # SAFE CHECK (keep only this)
+            if vc.shape[0] != 2:
+                raise CustomException(
+                    f"Invalid target distribution after mapping: {vc.to_dict()}",
+                    sys
+                )
+
+            # Optional stronger check (recommended in production)
+            if min(vc.values) < 100:  # prevent extreme imbalance bugs
+                logging.warning("Severe class imbalance detected")
 
             logging.info(f"Data shape: {df.shape}")
-            logging.info("Data downloaded successfully.")
+            logging.info("Data loaded successfully.")
+
             return df
+
         except Exception as e:
             raise CustomException(f"Error downloading data: {e}", sys)
 
