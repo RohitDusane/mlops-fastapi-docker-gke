@@ -3,7 +3,6 @@ uvicorn[standard]==0.32.0
 scikit-learn==1.5.2
 joblib==1.4.2
 
--r requirements.txt
 pandas==2.2.3
 ucimlrepo==0.0.7
 pyyaml==6.0.2
