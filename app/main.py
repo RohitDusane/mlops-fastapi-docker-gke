@@ -15,7 +15,7 @@ import time
 import uuid
 import joblib
 from contextlib import asynccontextmanager
-
+import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -136,14 +136,31 @@ def predict(data: DiabetesInput):
     if not model_state.is_loaded:
         raise HTTPException(status_code=503, detail="Model not loaded — service unavailable")
 
+    # input_dict = data.model_dump(by_alias=True)
+    # try:
+    #     input_array = np.array([[input_dict[col] for col in model_state.feature_order]])
+    # except KeyError as e:
+    #     raise HTTPException(status_code=500, detail=f"Feature mismatch with loaded model: {e}")
+
+    # start = time.time()
+    # proba = float(model_state.model.predict_proba(input_array)[0][1])
+    
     input_dict = data.model_dump(by_alias=True)
+
     try:
-        input_array = np.array([[input_dict[col] for col in model_state.feature_order]])
+        input_df = pd.DataFrame(
+            [[input_dict[col] for col in model_state.feature_order]],
+            columns=model_state.feature_order,
+        )
     except KeyError as e:
-        raise HTTPException(status_code=500, detail=f"Feature mismatch with loaded model: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Feature mismatch with loaded model: {e}",
+        )
 
     start = time.time()
-    proba = float(model_state.model.predict_proba(input_array)[0][1])
+    proba = float(model_state.model.predict_proba(input_df)[0][1])
+
     prediction = proba >= model_state.threshold
     latency_ms = round((time.time() - start) * 1000, 2)
 
