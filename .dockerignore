@@ -1,39 +1,90 @@
 .git
-.github
-
+.gitignore
+venv/
+.venv/
 __pycache__/
 *.pyc
-
 .pytest_cache/
-
-.venv/
-env/
-db_risk/
-
+.ipynb_checkpoints/
+<!-- artifacts/ -->
+logs/
+*.pkl
+*.joblib
+.env
 .vscode/
 .idea/
 
-mlruns/
-logs/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-notebooks/
+# Virtual environments
+venv/
+.venv/
+env/
 
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Tests
 tests/
+.pytest_cache/
 
-README.md
+# Logs
+logs/
+*.log
 
-*.ipynb
+# MLFlow
+mlruns/
 
+# Data
 data/
 
+# DVC
+.dvc/
+.dvcignore
+
+# Notebooks
+*.ipynb
+
+# Documentation
+README.md
+
+# Packaging
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build cache
+build/
+dist/
+
+# Claude
+.claude/
+
+
+.git
+__pycache__
+.pytest_cache
+tests
+docs
+notebooks
+<!-- artifacts -->
+models
+*.ipynb
 *.csv
-
 *.parquet
-
-*.zip
-
-*.tar
-
-*.gz
-
-*.log
+*.pkl
+*.joblib
+*.onnx
+mlruns
+logs
