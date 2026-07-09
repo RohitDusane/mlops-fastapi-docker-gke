@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-
+import yaml
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -27,11 +27,15 @@ class DataTransformationConfig:
     preprocessor_file_name: str = "preprocessor.pkl"
     target_column: str = "Diabetes_binary"
 
-
+# load params
+params = yaml.safe_load(open("config/params.yaml"))
 @dataclass
 class ModelTrainerConfig:
-    trainer_dir: str = "artifacts/model_trainer"
-    trained_model_file_name: str = "model.pkl"
+    # trainer_dir: str = "artifacts/model_trainer"
+    # trained_model_file_name: str = "model.pkl"
+    trainer_dir=params["artifacts"]["trainer_dir"],
+    n_trials=params["model_training"]["optuna"]["n_trials"],
+    cv_folds=params["model_training"]["optuna"]["cv_folds"],
     random_state: int = 24
 
     # ---- Search space: algorithm family is itself an Optuna dimension,

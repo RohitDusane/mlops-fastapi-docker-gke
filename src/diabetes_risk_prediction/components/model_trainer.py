@@ -318,6 +318,17 @@ class ModelTrainer:
                 # ---- Confusion matrix at the tuned threshold, for clinical review ----
                 from sklearn.metrics import confusion_matrix
                 cm = confusion_matrix(y_test, (final_model.predict_proba(X_test)[:, 1] >= threshold).astype(int))
+                confusion_path = os.path.join(self.config.evaluation_dir, "confusion_matrix.json")
+
+                with open(confusion_path,"w") as f:
+                    json.dump(
+                        {
+                        "actual": y_test.tolist(),
+                        "predicted": (final_model.predict_proba(X_test)[:, 1]).tolist()
+                        },
+                        f,
+                        indent=4
+                    )
                 mlflow.log_dict({"confusion_matrix": cm.tolist(), "threshold": threshold}, "confusion_matrix.json")
 
                 # ---- Clinical quality gates — config-driven, not magic numbers ----

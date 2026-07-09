@@ -1,5 +1,6 @@
 import sys
-
+import os
+import json
 import mlflow
 from mlflow.tracking import MlflowClient
 
@@ -115,6 +116,23 @@ class ModelEvaluation:
                     + f" | Accepted: {is_accepted}"
                 )
                 logging.info(f"New metrics: {new_metrics} | Current Production metrics: {current_metrics}")
+            
+            evaluation_dir = self.config.evaluation_dir
+            os.makedirs(evaluation_dir, exist_ok=True)
+
+            metrics_path = os.path.join(evaluation_dir, "metrics.json")
+
+            with open(metrics_path, "w") as f:
+                json.dump(
+                    {
+                        "model_accepted": is_accepted,
+                        "improved_score": improved_score,
+                        "trained_metrics": new_metrics,
+                        "production_metrics": current_metrics
+                    },
+                    f, indent=4)
+
+            logging.info(f"Evaluation metrics saved: {metrics_path}")
 
             return ModelEvaluationArtifact(
                 is_model_accepted=is_accepted,

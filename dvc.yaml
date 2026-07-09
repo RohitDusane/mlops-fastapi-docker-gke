@@ -4,16 +4,17 @@ stages:
     deps:
       - data/raw/raw_data.csv
       - src
-      - config/params.yaml
+      - configs/params.yaml
     params:
-      - config/params.yaml
+      - configs/params.yaml
     outs:
-      - artifacts
+      - artifacts/model_trainer
+      - artifacts/model_pusher
     metrics:
-      - artifacts/metrics.json:
+      - artifacts/model_evaluation/metrics.json:
           cache: false
     plots:
-      - artifacts/confusion_matrix.json:
+      - artifacts/model_evaluation/confusion_matrix.json:
           cache: false
           template: confusion
           x: predicted
