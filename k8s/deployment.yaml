@@ -25,9 +25,7 @@ spec:
       containers:
 
         - name: diabetes-api
-
-          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/diabetes-app:v1.0.0
-
+          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/diabetes-app:v1.0.1
           imagePullPolicy: Always
 
           ports:
