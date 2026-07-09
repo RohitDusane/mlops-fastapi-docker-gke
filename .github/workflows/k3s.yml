@@ -1,0 +1,108 @@
+name: CI/CD - k3s on single EC2 (minimal cost)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: me-central-1
+  ECR_REPO: diabetes-app
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements-train.txt
+      - run: ruff check .
+      - run: pytest tests/ -v   # uses a small fixture model, no cloud/data dependency
+
+  build-scan-push:
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: echo "image_tag=${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build
+        run: docker build -t ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.vars.outputs.image_tag }} .
+
+      - name: Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.vars.outputs.image_tag }}
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+      - name: Push
+        run: |
+          docker tag ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.vars.outputs.image_tag }} \
+                     ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:latest
+          docker push ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:latest
+
+  deploy:
+    needs: build-scan-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      # kubectl already exists on the k3s node itself (it IS the k3s server).
+      # SSM Run Command executes `kubectl set image` there directly — no
+      # separate kubeconfig handling from GitHub Actions, no exposed API
+      # server port, no bastion.
+      - name: Deploy via SSM (kubectl set image + rollout)
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy diabetes-app ${{ needs.build-scan-push.outputs.image_tag }}" \
+            --parameters commands='[
+              "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml",
+              "REGISTRY=$(aws ecr describe-registry --query registryId --output text).dkr.ecr.'${AWS_REGION}'.amazonaws.com",
+              "kubectl set image deployment/diabetes-app diabetes-app=$REGISTRY/'${ECR_REPO}':'${{ needs.build-scan-push.outputs.image_tag }}'",
+              "kubectl rollout status deployment/diabetes-app --timeout=120s"
+            ]' \
+            --region ${{ env.AWS_REGION }}
+
+  # Optional, manual: pull real data via DVC and run the full training
+  # pipeline. Separate from every push since retraining isn't wanted per-commit.
+  # train:
+  #   if: github.event_name == 'workflow_dispatch'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with: { python-version: "3.11" }
+  #     - run: pip install -r requirements-train.txt
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+  #         aws-region: me-central-1
+  #     - run: dvc pull data/raw/raw_data.csv
+  #     - run: python -m diabetes_risk_prediction.pipeline.training_pipeline
+  #     - run: dvc push

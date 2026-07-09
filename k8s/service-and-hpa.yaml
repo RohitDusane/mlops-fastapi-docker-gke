@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: diabetes-app-service
+spec:
+  # k3s ships its own lightweight load balancer (Klipper/ServiceLB) that
+  # binds this to the node's own IP on the given port — no AWS ELB/ALB is
+  # created, so this costs nothing extra beyond the one EC2 instance.
+  # (On real EKS, `type: LoadBalancer` would provision a billed ELB instead —
+  # this only stays free because we're running k3s, not EKS.)
+  type: LoadBalancer
+  selector:
+    app: diabetes-app
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: diabetes-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: diabetes-app
+  minReplicas: 2
+  maxReplicas: 6   # kept low — this is one small node, not a multi-node cluster
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 120
+# k3s bundles metrics-server by default (unlike EKS, which needs it installed
+# separately) — HPA should work immediately after `kubectl apply`.
+# Verify with: kubectl top pods
