@@ -45,10 +45,10 @@ class ModelBundle:
 
 @dataclass
 class ModelTrainerArtifact:
-    trained_model_file_path: str
+    # trained_model_file_path: str
+    mlflow_run_id: str
     train_metrics: dict
     test_metrics: dict
-    mlflow_run_id: str
     best_hyperparameters: dict
     model_type: str
     decision_threshold: float
@@ -60,11 +60,11 @@ class ModelEvaluationArtifact:
     improved_score: float
     trained_model_metrics: dict
     best_model_metrics: Optional[dict]
-    trained_model_file_path: str
-
+    # trained_model_file_path: str
+    mlflow_run_id: str
 
 @dataclass
 class ModelPusherArtifact:
     is_model_pushed: bool
     mlflow_model_version: Optional[str]
-    saved_model_path: str
+    # saved_model_path: str

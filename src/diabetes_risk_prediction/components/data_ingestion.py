@@ -10,7 +10,7 @@ from diabetes_risk_prediction.entity.config_entity import DataIngestionConfig
 
 from diabetes_risk_prediction.exception.custom_exception import CustomException
 from diabetes_risk_prediction.logger.logging import logging
-
+from pathlib import Path
 
 class DataIngestion:
     def __init__(self, data_ingestion_config: DataIngestionConfig):
@@ -60,7 +60,11 @@ class DataIngestion:
             os.makedirs(self.config.ingestion_dir, exist_ok=True)
 
             # SAVE RAW
-            raw_path = os.path.join(self.config.ingestion_dir, "raw.csv")
+            # raw_path = os.path.join(self.config.ingestion_dir, "raw.csv")
+            # data.to_csv(raw_path, index=False)
+
+            raw_path = Path(self.config.ingestion_dir) / "raw.csv"
+            raw_path.parent.mkdir(parents=True, exist_ok=True)
             data.to_csv(raw_path, index=False)
             
             # Split the data into train and test sets

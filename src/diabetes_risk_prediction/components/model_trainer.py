@@ -2,6 +2,7 @@ import sys
 import mlflow
 import mlflow.sklearn
 import numpy as np
+import pandas as pd
 import optuna
 from lightgbm import LGBMClassifier
 from mlflow.models.signature import infer_signature
@@ -47,6 +48,7 @@ class ModelTrainer:
         try:
             self.data_transformation_artifact = data_transformation_artifact
             self.config = model_trainer_config
+
         except Exception as e:
             raise CustomException(f"Error initializing ModelTrainer: {e}", sys)
 
@@ -129,6 +131,10 @@ class ModelTrainer:
                 # a hardcoded literal — stays correct if class balance shifts
                 # on retraining, unlike a fixed magic number.
                 "scale_pos_weight": scale_pos_weight,
+                "objective": "binary",
+                "metric": "auc",
+                "boosting_type": "gbdt",
+                "force_col_wise": True,
                 "random_state": self.config.random_state,
                 "n_jobs": 1,
                 "verbosity": -1,
@@ -185,11 +191,21 @@ class ModelTrainer:
         fold_scores = []
 
         for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
-            model.fit(X_train[train_idx], y_train[train_idx])
-            y_proba = model.predict_proba(X_train[val_idx])[:, 1]
-            score = average_precision_score(y_train[val_idx], y_proba) \
-                if self.config.cv_metric == "average_precision" \
-                else roc_auc_score(y_train[val_idx], y_proba)
+            X_train_fold = X_train.iloc[train_idx]
+            X_val_fold = X_train.iloc[val_idx]
+
+            y_train_fold = y_train[train_idx]
+            y_val_fold = y_train[val_idx]
+
+            model.fit(X_train_fold, y_train_fold)
+
+            y_proba = model.predict_proba(X_val_fold)[:, 1]
+
+            score = (
+                average_precision_score(y_val_fold, y_proba)
+                if self.config.cv_metric == "average_precision"
+                else roc_auc_score(y_val_fold, y_proba)
+            )
             fold_scores.append(score)
 
             # Real pruning: report the running mean after each fold so
@@ -220,8 +236,15 @@ class ModelTrainer:
             train_arr = load_numpy_array_data(self.data_transformation_artifact.transformed_train_file_path)
             test_arr = load_numpy_array_data(self.data_transformation_artifact.transformed_test_file_path)
 
-            X_train, y_train = train_arr[:, :-1], train_arr[:, -1]
-            X_test, y_test = test_arr[:, :-1], test_arr[:, -1]
+            # X_train, y_train = train_arr[:, :-1], train_arr[:, -1]
+            # X_test, y_test = test_arr[:, :-1], test_arr[:, -1]
+
+            feature_names = self.data_transformation_artifact.feature_columns
+
+            X_train = pd.DataFrame(train_arr[:, :-1], columns=feature_names)
+            X_test = pd.DataFrame(test_arr[:, :-1], columns=feature_names)
+            y_train = train_arr[:, -1].astype(int)
+            y_test = test_arr[:, -1].astype(int)
 
             neg, pos = np.bincount(y_train.astype(int))
             scale_pos_weight = neg / max(pos, 1)
@@ -247,14 +270,33 @@ class ModelTrainer:
                 final_params = {k[len(prefix):]: v for k, v in best_params.items() if k.startswith(prefix)}
                 if model_type == "lightgbm":
                     final_params["scale_pos_weight"] = scale_pos_weight
-                elif model_type in ("random_forest", "logistic_regression"):
-                    final_params["class_weight"] = "balanced"
+                    final_params.update({
+                        "objective": "binary",
+                        "metric": "auc",
+                        "boosting_type": "gbdt",
+                        "force_col_wise": True,
+                        "verbosity": -1,
+                        "n_jobs": -1,
+                    })
+                # elif model_type in ("random_forest", "logistic_regression"):
+                #     final_params["class_weight"] = "balanced"
+                #     final_params.update({"n_jobs": -1})
+                elif model_type == "random_forest":
+                    final_params.update({
+                        "class_weight": "balanced",
+                        "n_jobs": -1,
+                    })
+                elif model_type == "logistic_regression":
+                    final_params.update({
+                        "class_weight": "balanced",
+                    })
                 final_params["random_state"] = self.config.random_state
 
                 logging.info(f"Best algorithm: {model_type} | Best CV {self.config.cv_metric}: {study.best_value:.4f}")
                 logging.info(f"Best hyperparameters: {final_params}")
 
-                final_model = self._build_model(model_type, {**final_params, "n_jobs": -1} if model_type != "logistic_regression" else final_params)
+                # final_model = self._build_model(model_type, {**final_params, "n_jobs": -1} if model_type != "logistic_regression" else final_params)
+                final_model = self._build_model(model_type, final_params)
 
                 # Threshold tuned on a held-out split of the training data —
                 # see optimize_threshold()'s docstring for the caveat about
@@ -262,6 +304,7 @@ class ModelTrainer:
                 X_fit, X_val, y_fit, y_val = train_test_split(
                     X_train, y_train, test_size=0.2, stratify=y_train, random_state=self.config.random_state,
                 )
+
                 final_model.fit(X_fit, y_fit)
                 threshold = self.optimize_threshold(final_model, X_val, y_val)
 
@@ -295,14 +338,13 @@ class ModelTrainer:
                 # artifact rather than a separate model_card.json file (the
                 # old standalone train.py wrote that file; this pipeline
                 # doesn't, so serving code must not depend on it existing).
-                mlflow.log_dict(
-                    {
-                        "model_type": model_type,
-                        "threshold": threshold,
-                        "feature_columns": self.data_transformation_artifact.feature_columns,
-                    },
-                    "model_metadata.json",
-                )
+                metadata = {
+                    "model_type": model_type,
+                    "threshold": float(threshold),
+                    "feature_columns": self.data_transformation_artifact.feature_columns,
+                }
+
+                # mlflow.log_dict(metadata, "model_metadata.json",)
 
                 # ---- Feature importance (RF/LGBM only — LogisticRegression
                 # uses coefficients instead), logged separately for
@@ -317,18 +359,19 @@ class ModelTrainer:
 
                 # ---- Confusion matrix at the tuned threshold, for clinical review ----
                 from sklearn.metrics import confusion_matrix
-                cm = confusion_matrix(y_test, (final_model.predict_proba(X_test)[:, 1] >= threshold).astype(int))
+                os.makedirs(self.config.evaluation_dir, exist_ok=True)
+                preds = (final_model.predict_proba(X_test)[:,1] >= threshold).astype(int)
+                cm = confusion_matrix(y_test, preds)
                 confusion_path = os.path.join(self.config.evaluation_dir, "confusion_matrix.json")
 
                 with open(confusion_path,"w") as f:
-                    json.dump(
-                        {
-                        "actual": y_test.tolist(),
-                        "predicted": (final_model.predict_proba(X_test)[:, 1]).tolist()
-                        },
-                        f,
-                        indent=4
-                    )
+                    json.dump({
+                        "TN": int(cm[0,0]),
+                        "FP": int(cm[0,1]),
+                        "FN": int(cm[1,0]),
+                        "TP": int(cm[1,1]),
+                        "threshold": float(threshold)
+                    }, f, indent=4)
                 mlflow.log_dict({"confusion_matrix": cm.tolist(), "threshold": threshold}, "confusion_matrix.json")
 
                 # ---- Clinical quality gates — config-driven, not magic numbers ----
@@ -374,38 +417,77 @@ class ModelTrainer:
                 ])
 
                 signature = infer_signature(X_train, serving_pipeline.predict(X_train))
-                mlflow.sklearn.log_model(
-                    serving_pipeline,
-                    artifact_path="model",
-                    signature=signature,
-                    input_example=X_train[:5],
-                    registered_model_name=self.config.mlflow_registered_model_name,
+
+                metadata_path = "model_metadata.json"
+
+                with open(metadata_path, "w") as f:
+                    json.dump(metadata, f, indent=4)
+
+                # # Log normal model first WITHOUT registering
+                # mlflow.sklearn.log_model(
+                #     serving_pipeline,
+                #     artifact_path="model",
+                #     signature=signature,
+                #     input_example=X_train.head(5),
+                # )
+
+
+                # # Add metadata into same artifact location
+                # mlflow.log_artifact(
+                #     metadata_path,
+                #     artifact_path="model"
+                # )
+
+                import tempfile
+                import shutil
+
+                with tempfile.TemporaryDirectory() as tmp_dir:
+
+                    model_dir = os.path.join(tmp_dir, "model")
+
+                    mlflow.sklearn.save_model(
+                        sk_model=serving_pipeline,
+                        path=model_dir,
+                        signature=signature,
+                        input_example=X_train.head(5),
+                    )
+
+                    shutil.copy(
+                        "model_metadata.json",
+                        os.path.join(model_dir, "model_metadata.json")
+                    )
+
+                    mlflow.log_artifacts(
+                        model_dir,
+                        artifact_path="model"
+                    )
+
+                for root, dirs, files in os.walk(model_dir):
+                    logging.info(
+                        f"{root}: {files}"
+                    )
+                # Now register the completed artifact
+                model_uri = f"runs:/{parent_run.info.run_id}/model"
+
+                mlflow.register_model(
+                    model_uri=model_uri,
+                    name=self.config.mlflow_registered_model_name
                 )
+
                 run_id = parent_run.info.run_id
 
-            # model_path = f"{self.config.trainer_dir}/{self.config.trained_model_file_name}"
-            model_dir = self.config.trainer_dir
-            os.makedirs(model_dir, exist_ok=True)
-
-            model_path = os.path.join(model_dir, "model.joblib")
-            metadata_path = os.path.join(model_dir, "metadata.json")
-
-            joblib.dump(serving_pipeline, model_path)
-
-            metadata = {
-                "threshold": float(threshold),
-                "model_type": model_type,
-                "feature_columns": self.data_transformation_artifact.feature_columns,
-                "mlflow_run_id": run_id,
-            }
-
-            with open(metadata_path, "w") as f:
-                json.dump(metadata, f, indent=4)
+                mlflow.set_tag("task", "diabetes-risk-classification")
+                mlflow.set_tag("framework", "scikit-learn")
+                mlflow.set_tag("deployment_ready", "true")
             
-            logging.info(f"Model training completed — algorithm: {model_type}, threshold: {threshold:.3f}")
+            logging.info(
+                f"Model training completed | "
+                f"algorithm={model_type} | "
+                f"threshold={threshold:.3f} | "
+                f"run_id={run_id}"
+            )
 
             return ModelTrainerArtifact(
-                trained_model_file_path=model_path,
                 train_metrics=train_metrics,
                 test_metrics=test_metrics,
                 mlflow_run_id=run_id,

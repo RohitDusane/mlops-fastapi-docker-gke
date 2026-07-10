@@ -1,0 +1,11 @@
+{
+    "model_accepted": true,
+    "improved_score": 0.727555,
+    "trained_metrics": {
+        "roc_auc": 0.831,
+        "f1_score": 0.4364,
+        "recall": 0.8173,
+        "precision": 0.2976
+    },
+    "production_metrics": null
+}

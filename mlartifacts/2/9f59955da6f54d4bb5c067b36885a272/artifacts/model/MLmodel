@@ -1,0 +1,44 @@
+artifact_path: model
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.20
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+mlflow_version: 2.17.0
+model_size_bytes: 3030144
+model_uuid: 50d591a337644e25a31b4e2a894179bd
+run_id: 9f59955da6f54d4bb5c067b36885a272
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "HighBP", "required": true}, {"type": "double",
+    "name": "HighChol", "required": true}, {"type": "double", "name": "CholCheck",
+    "required": true}, {"type": "double", "name": "BMI", "required": true}, {"type":
+    "double", "name": "Smoker", "required": true}, {"type": "double", "name": "Stroke",
+    "required": true}, {"type": "double", "name": "HeartDiseaseorAttack", "required":
+    true}, {"type": "double", "name": "PhysActivity", "required": true}, {"type":
+    "double", "name": "Fruits", "required": true}, {"type": "double", "name": "Veggies",
+    "required": true}, {"type": "double", "name": "HvyAlcoholConsump", "required":
+    true}, {"type": "double", "name": "AnyHealthcare", "required": true}, {"type":
+    "double", "name": "NoDocbcCost", "required": true}, {"type": "double", "name":
+    "GenHlth", "required": true}, {"type": "double", "name": "MentHlth", "required":
+    true}, {"type": "double", "name": "PhysHlth", "required": true}, {"type": "double",
+    "name": "DiffWalk", "required": true}, {"type": "double", "name": "Sex", "required":
+    true}, {"type": "double", "name": "Age", "required": true}, {"type": "double",
+    "name": "Education", "required": true}, {"type": "double", "name": "Income", "required":
+    true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2026-07-10 17:21:32.919011'

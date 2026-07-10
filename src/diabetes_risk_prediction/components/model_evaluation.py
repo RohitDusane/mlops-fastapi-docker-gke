@@ -46,9 +46,7 @@ class ModelEvaluation:
             # since model_pusher.py still uses transition_model_version_stage
             # — migrate both together if you move to the alias API, not
             # just this side.
-            versions = client.get_latest_versions(
-                self.config.mlflow_registered_model_name, stages=["Production"]
-            )
+            versions = client.get_latest_versions(self.config.mlflow_registered_model_name, stages=["Production"])
             if not versions:
                 logging.info("No Production model found — first model will be accepted by default.")
                 return None
@@ -87,8 +85,14 @@ class ModelEvaluation:
     def initiate_model_evaluation(self) -> ModelEvaluationArtifact:
         try:
             logging.info("Starting model evaluation.")
+            mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
 
             raw_new_metrics = self.model_trainer_artifact.test_metrics
+            logging.info(
+                f"Evaluating model: {self.model_trainer_artifact.model_type} "
+                f"run_id={self.model_trainer_artifact.mlflow_run_id}"
+            )
+            
             new_metrics = {
                 "roc_auc": self._safe_get(raw_new_metrics, "roc_auc"),
                 "f1_score": self._safe_get(raw_new_metrics, "f1_score"),
@@ -139,7 +143,8 @@ class ModelEvaluation:
                 improved_score=round(improved_score, 4),
                 trained_model_metrics=new_metrics,
                 best_model_metrics=current_metrics,
-                trained_model_file_path=self.model_trainer_artifact.trained_model_file_path,
+                # trained_model_file_path=self.model_trainer_artifact.trained_model_file_path,
+                mlflow_run_id=self.model_trainer_artifact.mlflow_run_id,
             )
         except Exception as e:
             raise CustomException(f"Error during model evaluation: {e}", sys)

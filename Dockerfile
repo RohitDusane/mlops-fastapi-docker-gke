@@ -29,9 +29,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# COPY requirements.txt requirements-dev.txt .
 
-RUN pip install --upgrade pip setuptools wheel
-RUN pip install --prefix=/install -r requirements.txt
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --prefix=/install -r requirements.txt
+
+# RUN pip install --prefix=/install -r requirements.txt && \
+#     pip install --prefix=/install -r requirements-dev.txt
 
 RUN find /install -type f -name "*.pyc" -delete && \
     find /install -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

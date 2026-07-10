@@ -1,3 +1,8 @@
+artifacts:
+  trainer_dir: artifacts/model_trainer
+  evaluation_dir: artifacts/model_evaluation
+  model_pusher_dir: artifacts/model_pusher
+
 model_training:
   n_trials: 15
   cv_folds: 5
@@ -6,6 +11,8 @@ model_training:
     - random_forest
     - lightgbm
     - logistic_regression
+  enable_pruning: true
+  calibrate_probabilities: false
 
 threshold:
   target_recall_floor: 0.80
@@ -14,6 +21,8 @@ quality_gate:
   min_roc_auc: 0.80
   min_recall: 0.70
   min_f1: 0.40
+  overfitting_threshold: 0.10
+  target_metric: recall
 
 evaluation:
   changed_threshold_score: 0.01
@@ -21,8 +30,6 @@ evaluation:
 
 mlflow:
   tracking_uri: http://localhost:5000
-  experiment_name: diabetes-risk-screening
-  registered_model_name: diabetes-risk-model
-
-model_pusher:
-  saved_model_dir: artifacts/model_pusher
+  experiment_name: diabetes-risk-screening-v3
+  registered_model_name: diabetes-risk-model-v3
+  model_alias: champion

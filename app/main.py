@@ -131,20 +131,81 @@ def metrics():
     return "\n".join(lines) + "\n"
 
 
+# @app.post("/predict", response_model=PredictionResponse)
+# def predict(data: DiabetesInput):
+#     if not model_state.is_loaded:
+#         raise HTTPException(status_code=503, detail="Model not loaded — service unavailable")
+
+#     # input_dict = data.model_dump(by_alias=True)
+#     # try:
+#     #     input_array = np.array([[input_dict[col] for col in model_state.feature_order]])
+#     # except KeyError as e:
+#     #     raise HTTPException(status_code=500, detail=f"Feature mismatch with loaded model: {e}")
+
+#     # start = time.time()
+#     # proba = float(model_state.model.predict_proba(input_array)[0][1])
+    
+#     input_dict = data.model_dump(by_alias=True)
+
+#     try:
+#         input_df = pd.DataFrame(
+#             [[input_dict[col] for col in model_state.feature_order]],
+#             columns=model_state.feature_order,
+#         )
+#     except KeyError as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Feature mismatch with loaded model: {e}",
+#         )
+
+#     start = time.time()
+#     proba = float(model_state.model.predict_proba(input_df)[0][1])
+#     # input_df = input_df.astype(float)
+
+#     native_model = model_state.model._model_impl.python_model.model
+    
+#     proba = float(native_model.predict_proba(input_df)[0][1])
+#     prediction = proba >= model_state.threshold
+
+#     latency_ms = round((time.time() - start) * 1000, 2)
+
+#     # Canonical key only — "low"/"moderate"/"high". Display phrasing
+#     # ("LOWER LIKELIHOOD" etc.) is decided once, in main.js, not here too.
+#     risk_category = "low" if proba < 0.25 else "moderate" if proba < 0.5 else "high"
+
+#     reasons, recommendations = generate_insights(data)
+
+#     logger.info(json.dumps({
+#         "event": "prediction",
+#         "model_version": model_state.model_version,
+#         "model_type": model_state.model_type,
+#         "decision_threshold": model_state.threshold,
+#         "risk_score": round(proba, 4),
+#         "risk_category": risk_category,
+#         "latency_ms": latency_ms,
+#         "input": input_dict,
+#     }))
+
+#     return PredictionResponse(
+#         diabetic_risk=prediction,
+#         risk_score=round(proba, 4),
+#         risk_category=risk_category,
+#         reasons=reasons,
+#         recommendations=recommendations,
+#         model_version=model_state.model_version,
+#         model_type=model_state.model_type,
+#         features_used=len(model_state.feature_order),
+#         disclaimer=DISCLAIMER,
+#     )
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict(data: DiabetesInput):
     if not model_state.is_loaded:
-        raise HTTPException(status_code=503, detail="Model not loaded — service unavailable")
+        raise HTTPException(
+            status_code=503,
+            detail="Model not loaded — service unavailable"
+        )
 
-    # input_dict = data.model_dump(by_alias=True)
-    # try:
-    #     input_array = np.array([[input_dict[col] for col in model_state.feature_order]])
-    # except KeyError as e:
-    #     raise HTTPException(status_code=500, detail=f"Feature mismatch with loaded model: {e}")
-
-    # start = time.time()
-    # proba = float(model_state.model.predict_proba(input_array)[0][1])
-    
     input_dict = data.model_dump(by_alias=True)
 
     try:
@@ -152,6 +213,7 @@ def predict(data: DiabetesInput):
             [[input_dict[col] for col in model_state.feature_order]],
             columns=model_state.feature_order,
         )
+
     except KeyError as e:
         raise HTTPException(
             status_code=500,
@@ -159,14 +221,30 @@ def predict(data: DiabetesInput):
         )
 
     start = time.time()
-    proba = float(model_state.model.predict_proba(input_df)[0][1])
+
+    # Convert according to MLflow schema
+    input_df = input_df.astype(float)
+
+    # Access underlying sklearn/lightgbm model
+    # native_model = model_state.model._model_impl.python_model.model
+    native_model = model_state.model._model_impl.sklearn_model
+    # Probability
+    proba = float(native_model.predict_proba(input_df)[0][1])
 
     prediction = proba >= model_state.threshold
-    latency_ms = round((time.time() - start) * 1000, 2)
 
-    # Canonical key only — "low"/"moderate"/"high". Display phrasing
-    # ("LOWER LIKELIHOOD" etc.) is decided once, in main.js, not here too.
-    risk_category = "low" if proba < 0.25 else "moderate" if proba < 0.5 else "high"
+    latency_ms = round(
+        (time.time() - start) * 1000,
+        2
+    )
+
+    risk_category = (
+        "low"
+        if proba < 0.25
+        else "moderate"
+        if proba < 0.5
+        else "high"
+    )
 
     reasons, recommendations = generate_insights(data)
 

@@ -1,4 +1,4 @@
-import shutil
+
 import sys
 
 import mlflow
@@ -31,23 +31,39 @@ class ModelPusher:
     def initiate_model_pusher(self) -> ModelPusherArtifact:
         try:
             if not self.model_evaluation_artifact.is_model_accepted:
-                logging.info("Model was not accepted by evaluation — skipping push.")
+                logging.info("Model rejected by evaluation — skipping promotion.")
                 return ModelPusherArtifact(
                     is_model_pushed=False,
                     mlflow_model_version=None,
-                    saved_model_path="",
                 )
 
             mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
             client = MlflowClient()
 
-            # Find the model version tied to this training run and promote
-            # it to Production; archive whatever was Production before.
-            all_versions = client.search_model_versions(
+            # Find registered model version created by this training run
+            # all_versions = client.search_model_versions(f"name='{self.config.mlflow_registered_model_name}'")
+            # matching = [v for v in all_versions if v.run_id == self.model_trainer_artifact.mlflow_run_id]
+
+            versions = client.search_model_versions(
                 f"name='{self.config.mlflow_registered_model_name}'"
             )
-            matching = [v for v in all_versions if v.run_id == self.model_trainer_artifact.mlflow_run_id]
+            logging.info(
+                "Searching model versions for run_id=%s",
+                self.model_trainer_artifact.mlflow_run_id,
+            )
 
+            for v in versions:
+                logging.info(
+                    "version=%s run_id=%s source=%s",
+                    v.version,
+                    v.run_id,
+                    v.source,
+                )
+            matching = [
+                v for v in versions
+                if v.run_id == self.model_trainer_artifact.mlflow_run_id
+            ]
+            
             if not matching:
                 raise CustomException(
                     f"No MLflow model version found for run_id {self.model_trainer_artifact.mlflow_run_id}",
@@ -55,27 +71,42 @@ class ModelPusher:
                 )
 
             version = matching[0].version
-            client.transition_model_version_stage(
-                name=self.config.mlflow_registered_model_name,
+            model_name = self.config.mlflow_registered_model_name
+            alias = self.config.mlflow_model_alias
+
+            # GOVERNENCE TAGS
+            # Add audit metadata
+            client.set_model_version_tag(
+                name=model_name,
                 version=version,
-                stage="Production",
-                archive_existing_versions=True,
+                key="validation_status",
+                value="passed"
             )
-            logging.info(f"Promoted model version {version} to Production in MLflow Registry.")
+            
+            client.set_model_version_tag(
+                name=model_name,
+                version=version,
+                key="deployment_target",
+                value="fastapi",
+            )
 
-            # Also copy to a local "saved_models" dir — this is what the
-            # FastAPI service loads when MODEL_SOURCE=local instead of
-            # pulling from MLflow over HTTP at startup.
-            import os
+            # PROMOTE MODEL
+            # Assign champion alias
+            client.set_registered_model_alias(
+                name=model_name,
+                alias=alias,
+                version=str(version)
+            )
+            
+            logging.info(
+                "Assigned MLflow alias | "
+                "model=%s | alias=%s | version=%s",
+                model_name, alias, version,)
 
-            os.makedirs(self.config.saved_model_dir, exist_ok=True)
-            saved_path = os.path.join(self.config.saved_model_dir, "diabetes_model.pkl")
-            shutil.copy(self.model_trainer_artifact.trained_model_file_path, saved_path)
 
             return ModelPusherArtifact(
                 is_model_pushed=True,
                 mlflow_model_version=str(version),
-                saved_model_path=saved_path,
             )
         except CustomException:
             raise
