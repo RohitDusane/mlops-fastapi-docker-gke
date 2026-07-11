@@ -1,0 +1,55 @@
+schema: '2.0'
+stages:
+  train_pipeline:
+    cmd: python src/diabetes_risk_prediction/pipeline/training_pipeline.py
+    deps:
+    - path: configs/params.yaml
+      hash: md5
+      md5: 43a62a468a27cf3f5b5cf9130eb3fb27
+      size: 795
+    - path: data/raw/raw_data.csv
+      hash: md5
+      md5: 8f90e44047182c5f32d10f0c4dd4890f
+      size: 22738154
+    - path: src
+      hash: md5
+      md5: e3ff60551c5d681ed621ab3a38feaf29.dir
+      size: 144154
+      nfiles: 59
+    params:
+      configs/params.yaml:
+        evaluation:
+          changed_threshold_score: 0.01
+          max_precision_regression: 0.1
+        mlflow:
+          tracking_uri: http://localhost:5000
+          experiment_name: diabetes-risk-screening-v3
+          registered_model_name: diabetes-risk-model-v3
+          model_alias: champion
+        model_training:
+          n_trials: 15
+          cv_folds: 5
+          cv_metric: average_precision
+          candidate_algorithms:
+          - random_forest
+          - lightgbm
+          - logistic_regression
+          enable_pruning: true
+          calibrate_probabilities: false
+        quality_gate:
+          min_roc_auc: 0.8
+          min_recall: 0.7
+          min_f1: 0.4
+          overfitting_threshold: 0.1
+          target_metric: recall
+        threshold:
+          target_recall_floor: 0.8
+    outs:
+    - path: artifacts/model_evaluation/confusion_matrix.json
+      hash: md5
+      md5: 5f355bec6ab1eeee2b395f4ef1240dc7
+      size: 110
+    - path: artifacts/model_evaluation/metrics.json
+      hash: md5
+      md5: fd938aceeb1eac02e132b927ec1d257d
+      size: 245

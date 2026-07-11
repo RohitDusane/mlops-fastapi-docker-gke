@@ -399,11 +399,27 @@ If you're learning MLOps, my advice: **just start building**. You'll make mistak
 # BEFORE ANY CODE RUN MLFLOW AT LOCAL USING
 
 ```bash
-mlflow server 
---backend-store-uri sqlite:///mlflow.db 
---default-artifact-root ./mlruns 
---host 0.0.0.0 
---port 5000
+mlflow server `
+  --backend-store-uri sqlite:///mlflow.db `
+  --default-artifact-root ./mlruns `
+  --host 0.0.0.0 `
+  --port 5000
+
+
+
+mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 ```
+
+
+
+### FOR DOCKER AND DEPLOYMENT - LOCALALY TESTING WE NEED
+
+mlflow server `
+   --backend-store-uri sqlite:///mlflow.db `
+   --default-artifact-root ./mlruns `
+   --host 0.0.0.0 `
+   --port 5000 `
+   --allowed-hosts "host.docker.internal,localhost,127.0.0.1"
+
 
 </div>

@@ -463,9 +463,7 @@ class ModelTrainer:
                     )
 
                 for root, dirs, files in os.walk(model_dir):
-                    logging.info(
-                        f"{root}: {files}"
-                    )
+                    logging.info(f"{root}: {files}")
                 # Now register the completed artifact
                 model_uri = f"runs:/{parent_run.info.run_id}/model"
 

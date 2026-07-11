@@ -106,9 +106,7 @@ class ModelState:
         # metadata = mlflow.artifacts.load_dict(f"{model_uri}/model_metadata.json")
         
         # Download complete model artifact directory
-        local_path = mlflow.artifacts.download_artifacts(
-            artifact_uri=model_uri
-        )
+        local_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
 
         metadata_file = os.path.join(
             local_path,
@@ -116,9 +114,7 @@ class ModelState:
         )
 
         if not os.path.exists(metadata_file):
-            raise FileNotFoundError(
-                f"model_metadata.json missing: {metadata_file}"
-            )
+            raise FileNotFoundError(f"model_metadata.json missing: {metadata_file}")
 
         with open(metadata_file, "r") as f:
             metadata = json.load(f)
@@ -158,6 +154,5 @@ class ModelState:
             # instead of the pod crash-looping.
             logger.exception("Failed to load model: %s")
             raise
-
 
 model_state = ModelState()

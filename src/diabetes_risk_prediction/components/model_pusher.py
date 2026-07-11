@@ -13,7 +13,6 @@ from diabetes_risk_prediction.entity.artifact_entity import (
 from diabetes_risk_prediction.exception.custom_exception import CustomException
 from diabetes_risk_prediction.logger.logging import logging
 
-
 class ModelPusher:
     def __init__(
         self,
@@ -44,9 +43,7 @@ class ModelPusher:
             # all_versions = client.search_model_versions(f"name='{self.config.mlflow_registered_model_name}'")
             # matching = [v for v in all_versions if v.run_id == self.model_trainer_artifact.mlflow_run_id]
 
-            versions = client.search_model_versions(
-                f"name='{self.config.mlflow_registered_model_name}'"
-            )
+            versions = client.search_model_versions(f"name='{self.config.mlflow_registered_model_name}'")
             logging.info(
                 "Searching model versions for run_id=%s",
                 self.model_trainer_artifact.mlflow_run_id,
@@ -65,10 +62,7 @@ class ModelPusher:
             ]
             
             if not matching:
-                raise CustomException(
-                    f"No MLflow model version found for run_id {self.model_trainer_artifact.mlflow_run_id}",
-                    sys,
-                )
+                raise CustomException(f"No MLflow model version found for run_id {self.model_trainer_artifact.mlflow_run_id}", sys,)
 
             version = matching[0].version
             model_name = self.config.mlflow_registered_model_name
@@ -102,7 +96,6 @@ class ModelPusher:
                 "Assigned MLflow alias | "
                 "model=%s | alias=%s | version=%s",
                 model_name, alias, version,)
-
 
             return ModelPusherArtifact(
                 is_model_pushed=True,
