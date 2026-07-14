@@ -1,0 +1,6 @@
+artifact_location: file:///F:/_DataScienc_KNaik/NEW_GIT_PROJECT_DS/MLOPS_FASTAPI_GKE/mlops-fastapi-docker-gke/${MLFLOW_TRACKING_URI}/0
+creation_time: 1784040917060
+experiment_id: '0'
+last_update_time: 1784040917060
+lifecycle_stage: active
+name: Default

@@ -5,16 +5,16 @@ stages:
     deps:
     - path: configs/params.yaml
       hash: md5
-      md5: 43a62a468a27cf3f5b5cf9130eb3fb27
-      size: 795
+      md5: 7f6e7cb6a5957f472ffe95c5b8c7a89c
+      size: 1020
     - path: data/raw/raw_data.csv
       hash: md5
       md5: 8f90e44047182c5f32d10f0c4dd4890f
       size: 22738154
     - path: src
       hash: md5
-      md5: e3ff60551c5d681ed621ab3a38feaf29.dir
-      size: 144154
+      md5: 414e50a33341f928248c2037b9c04c7c.dir
+      size: 143996
       nfiles: 59
     params:
       configs/params.yaml:
@@ -22,7 +22,7 @@ stages:
           changed_threshold_score: 0.01
           max_precision_regression: 0.1
         mlflow:
-          tracking_uri: http://localhost:5000
+          tracking_uri: ${MLFLOW_TRACKING_URI}
           experiment_name: diabetes-risk-screening-v3
           registered_model_name: diabetes-risk-model-v3
           model_alias: champion
@@ -47,9 +47,9 @@ stages:
     outs:
     - path: artifacts/model_evaluation/confusion_matrix.json
       hash: md5
-      md5: 5f355bec6ab1eeee2b395f4ef1240dc7
-      size: 110
+      md5: ea4c08602ecf19d604502f0ec4ca371f
+      size: 111
     - path: artifacts/model_evaluation/metrics.json
       hash: md5
-      md5: fd938aceeb1eac02e132b927ec1d257d
-      size: 245
+      md5: 96c007474d10787b273f86f60134c8a1
+      size: 243

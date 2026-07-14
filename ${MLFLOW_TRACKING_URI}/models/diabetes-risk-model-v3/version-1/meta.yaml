@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1784041941956
+current_stage: None
+description: null
+last_updated_timestamp: 1784041941956
+name: diabetes-risk-model-v3
+run_id: 3d5112af87124edea0fe6d3f8b9d8d46
+run_link: null
+source: file:///F:/_DataScienc_KNaik/NEW_GIT_PROJECT_DS/MLOPS_FASTAPI_GKE/mlops-fastapi-docker-gke/${MLFLOW_TRACKING_URI}/952619489996668971/3d5112af87124edea0fe6d3f8b9d8d46/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///F:/_DataScienc_KNaik/NEW_GIT_PROJECT_DS/MLOPS_FASTAPI_GKE/mlops-fastapi-docker-gke/${MLFLOW_TRACKING_URI}/952619489996668971/3d5112af87124edea0fe6d3f8b9d8d46/artifacts/model
+user_id: null
+version: 1

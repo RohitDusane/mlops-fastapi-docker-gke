@@ -1,0 +1,15 @@
+artifact_uri: file:///F:/_DataScienc_KNaik/NEW_GIT_PROJECT_DS/MLOPS_FASTAPI_GKE/mlops-fastapi-docker-gke/${MLFLOW_TRACKING_URI}/952619489996668971/cdf12838862349f0bb9996a7a62ece3f/artifacts
+end_time: 1784041216875
+entry_point_name: ''
+experiment_id: '952619489996668971'
+lifecycle_stage: active
+run_id: cdf12838862349f0bb9996a7a62ece3f
+run_name: dapper-jay-567
+run_uuid: cdf12838862349f0bb9996a7a62ece3f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1784041216685
+status: 3
+tags: []
+user_id: rohit

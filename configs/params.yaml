@@ -30,7 +30,13 @@ evaluation:
 
 mlflow:
   # tracking_uri: http://localhost:5000
-  tracking_uri: http://mlflow-service:5000
+  # tracking_uri: http://mlflow-service:5000
+  tracking_uri: ${MLFLOW_TRACKING_URI}
   experiment_name: diabetes-risk-screening-v3
   registered_model_name: diabetes-risk-model-v3
   model_alias: champion
+
+  # set MLFLOW_TRACKING_URI=http://localhost:5000
+  # env:
+  # - name: MLFLOW_TRACKING_URI
+  #   value: http://mlflow-service:5000
