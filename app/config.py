@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     metadata_path: str = "artifacts/model_trainer/metadata.json"
 
     # mlflow_tracking_uri: str = ("http://mlflow.mlflow.svc.cluster.local:5000")
-    mlflow_tracking_uri:str = "(http://mlflow:5000)"
+    mlflow_tracking_uri:str = "http://mlflow:5000"
     mlflow_model_name: str = "diabetes-risk-model-v3"
     mlflow_model_alias: str = "champion"
     # mlflow_model_stage: str = "Production"
@@ -45,7 +45,8 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# print("CONFIG DEBUG")
-# print("URI:", settings.mlflow_tracking_uri)
-# print("NAME:", settings.mlflow_model_name)
-# print("ALIAS:", settings.mlflow_model_alias)
+print("=" * 60)
+print("Tracking URI :", settings.mlflow_tracking_uri)
+print("Model Name   :", settings.mlflow_model_name)
+print("Model Alias  :", settings.mlflow_model_alias)
+print("=" * 60)

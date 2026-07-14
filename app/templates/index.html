@@ -10,7 +10,11 @@
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
+  <!-- Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  
   <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
+
 </head>
 <body>
   <div class="app-shell">
@@ -28,7 +32,8 @@
       </div>
       <div class="hero-visual">
         <div class="panel gauge-panel" id="hero-gauge-panel">
-          <svg width="220" height="180" viewBox="0 0 220 180" id="hero-gauge-svg"></svg>
+          <!-- <svg width="220" height="180" viewBox="0 0 220 180" id="hero-gauge-svg"></svg> -->
+          <svg width="220" height="180" viewBox="0 0 220 180" id="hero-gauge-svg" role="img" aria-label="Hero diabetes risk gauge"></svg>
         </div>
       </div>
     </section>
@@ -135,7 +140,7 @@
       <div class="result-sticky">
         <div class="panel gauge-panel" id="result-gauge-panel">
           <h3 class="card-title">Your diabetes screening score</h3>
-          <svg width="220" height="180" viewBox="0 0 220 180" id="result-gauge-svg"></svg>
+          <svg width="220" height="180" viewBox="0 0 220 180" id="result-gauge-svg" role="img" aria-label="Your diabetes risk gauge"></svg>
           <div id="risk-number" class="risk-number">—</div>
           <div id="risk-label" class="risk-label">Fill in the form and submit</div>
         </div>
@@ -152,16 +157,23 @@
           <p>Version: <span id="model-version">—</span></p>
         </div>
 
-        <div class="panel disclaimer" style="margin-top:20px">
+        <!-- <div class="panel disclaimer" style="margin-top:20px">
           This is a statistical screening risk estimate based on self-reported health survey
           indicators. It is NOT a medical diagnosis. Consult a licensed healthcare professional
           for any clinical decision.
+        </div> -->
+        <!-- Sticky Disclaimer -->
+        <div class="disclaimer-banner">
+          This is a statistical screening tool based on CDC BRFSS data. 
+          <strong>It is NOT a medical diagnosis.</strong> Consult a healthcare professional. 
+          Last updated: July 2026 | Sources: CDC BRFSS,  Health Authority guidelines.
         </div>
       </div>
     </div>
 
     <footer class="footer">
-      <span>Diabetes Risk Screening — CDC BRFSS 2015 model</span>
+      <span>Diabetes Risk Screening — public health tool | CDC BRFSS 2015 model</span>
+      <span>Data processed locally • Privacy-first</span>
       <span>Not a substitute for professional medical advice</span>
     </footer>
   </div>

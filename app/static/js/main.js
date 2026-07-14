@@ -1,10 +1,26 @@
-// main.js — no framework, no build step.
-
+// main.js — Production-ready with confetti + accessibility
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Canonical category -> color and display label. This is the ONLY place
-// that maps "low"/"moderate"/"high" to a color or a human-readable phrase —
-// the backend sends the plain key, nothing else.
+// Confetti Library (already added in HTML)
+function launchConfetti() {
+  if (prefersReducedMotion) return;
+  const colors = ['#00e6c3', '#f4d35e', '#e8eef5', '#2dd4bf', '#d4af37'];
+  const duration = 2600;
+  const end = Date.now() + duration;
+
+  (function frame() {
+    confetti({
+      particleCount: 7,
+      angle: Math.random() * 70 + 55,
+      spread: 60,
+      origin: { x: Math.random(), y: Math.random() - 0.15 },
+      colors: colors
+    });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+// Canonical category meta
 const CATEGORY_META = {
   low: { color: "#2dd4bf", label: "LOWER LIKELIHOOD" },
   moderate: { color: "#f2a65a", label: "ELEVATED LIKELIHOOD" },
@@ -15,44 +31,118 @@ function categoryMeta(level) {
   return CATEGORY_META[level] || { color: "#5c7086", label: "—" };
 }
 
-// ---- Gauge rendering ----
+// // Real Confetti Animation
+// function launchConfetti() {
+//   if (prefersReducedMotion) return;
+//   const colors = ['#00e6c3', '#f4d35e', '#e8eef5', '#2dd4bf', '#d4af37'];
+//   const duration = 2600;
+//   const end = Date.now() + duration;
 
+//   (function frame() {
+//     confetti({
+//       particleCount: 7,
+//       angle: Math.random() * 70 + 55,
+//       spread: 60,
+//       origin: { x: Math.random(), y: Math.random() - 0.15 },
+//       colors: colors
+//     });
+//     if (Date.now() < end) requestAnimationFrame(frame);
+//   })();
+// }
+
+// Enhanced Gauge with Tick Marks
 function renderGauge(svg, riskScore, riskCategory) {
-  if (!svg) {
-    console.error("renderGauge: target <svg> element not found");
-    return;
-  }
-  const hasResult = typeof riskScore === "number";
-  const clamped = hasResult ? Math.min(Math.max(riskScore, 0), 1) : 0;
-  const angle = hasResult ? -135 + clamped * 270 : -135;
-  const dash = hasResult ? `${clamped * 251} 251` : "2 251";
-  const readout = hasResult ? `${Math.round(clamped * 100)}%` : "—";
-  const readoutColor = hasResult ? categoryMeta(riskCategory).color : "#5c7086";
+  if (!svg) return;
 
-  svg.innerHTML = `
+  if (!svg.dataset.initialized) {
+    svg.innerHTML = `
     <defs>
       <linearGradient id="gaugeGradient-${svg.id}" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#2dd4bf" />
-        <stop offset="50%" stop-color="#f2a65a" />
-        <stop offset="100%" stop-color="#ef5b5b" />
+        <stop offset="0%" stop-color="#00e6c3"/>
+        <stop offset="48%" stop-color="#f4a261"/>
+        <stop offset="100%" stop-color="#ff4d4d"/>
       </linearGradient>
-      <filter id="glow-${svg.id}"><feGaussianBlur stdDeviation="3" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+      <linearGradient id="needleGradient-${svg.id}" x1="50%" y1="0%" x2="50%" y2="100%">
+        <stop offset="0%" stop-color="#ffe066"/>
+        <stop offset="100%" stop-color="#e6b800"/>
+      </linearGradient>
+      <filter id="glow-${svg.id}" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="5" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
+      <pattern id="uaePattern" patternUnits="userSpaceOnUse" width="60" height="60" patternTransform="rotate(30)">
+        <path d="M10 30 L50 30 M30 10 L30 50" stroke="#ffffff" stroke-opacity="0.07" stroke-width="1.5"/>
+      </pattern>
     </defs>
-    <path d="M 30 150 A 80 80 0 1 1 190 150" fill="none" stroke="#24314a" stroke-width="14" stroke-linecap="round" />
-    <path d="M 30 150 A 80 80 0 1 1 190 150" fill="none" stroke="url(#gaugeGradient-${svg.id})"
-          stroke-width="14" stroke-linecap="round" stroke-dasharray="${dash}"
-          filter="url(#glow-${svg.id})" style="transition: stroke-dasharray 0.8s cubic-bezier(.16,1,.3,1)" />
-    <g style="transform-origin:110px 150px; transform: rotate(${angle}deg); transition: transform 0.8s cubic-bezier(.16,1,.3,1)">
-      <line x1="110" y1="150" x2="110" y2="75" stroke="#e8eef5" stroke-width="3" stroke-linecap="round" />
+
+    <path d="M30 150 A80 80 0 1 1 190 150" fill="none" stroke="#0f1c38" stroke-width="20" stroke-linecap="round"/>
+    <path d="M24 150 A86 86 0 1 1 196 150" fill="none" stroke="url(#uaePattern)" stroke-width="24" opacity="0.6"/>
+
+    <path id="${svg.id}-progress" d="M30 150 A80 80 0 1 1 190 150" fill="none" 
+          stroke="url(#gaugeGradient-${svg.id})" stroke-width="13.5" stroke-linecap="round"
+          stroke-dasharray="2 251" filter="url(#glow-${svg.id})"/>
+
+    <!-- Tick Marks -->
+    <g opacity="0.75">
+      <line x1="47" y1="125" x2="54" y2="118" stroke="#00e6c3" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="110" y1="73" x2="110" y2="66" stroke="#f4a261" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="173" y1="125" x2="166" y2="118" stroke="#ff4d4d" stroke-width="2.5" stroke-linecap="round"/>
     </g>
-    <circle cx="110" cy="150" r="7" fill="#e8eef5" />
-    <text x="110" y="120" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="26"
-          font-weight="600" fill="${readoutColor}">${readout}</text>
-    <text x="110" y="140" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10"
-          letter-spacing="1" fill="#5c7086">RISK SCORE</text>
-  `;
+
+
+    <!-- Needle -->
+    <g id="${svg.id}-needle" transform="rotate(-135 110 150)">
+      <!-- Main needle body -->
+      <line
+        x1="110" y1="150"
+        x2="110" y2="71"          <!-- Adjusted length -->
+        stroke="url(#needleGradient-${svg.id})"
+        stroke-width="7"
+        stroke-linecap="round"
+        filter="url(#glow-${svg.id})"
+      />
+      <!-- Highlight line -->
+      <line
+        x1="110" y1="150"
+        x2="110" y2="76"
+        stroke="#ffffff"
+        stroke-width="2.8"
+        stroke-linecap="round"
+        opacity="0.9"
+      />
+    </g>
+
+    <!-- Luxurious center -->
+    <circle cx="110" cy="150" r="12" fill="#0a1428" stroke="#1e2a4d" stroke-width="2.5"/>
+    <circle cx="110" cy="150" r="6.5" fill="#ffe066"/>
+    
+    <text id="${svg.id}-score" x="110" y="115" text-anchor="middle" font-size="34" font-weight="700" fill="#e0f2f1" letter-spacing="-1.5px">—</text>
+    <text x="110" y="143" text-anchor="middle" font-size="9.8" letter-spacing="1.8px" fill="#8a9eb8" font-weight="500">RISK SCORE</text>
+    `;
+
+    svg.dataset.initialized = "true";
+  }
+
+  const hasResult = typeof riskScore === "number";
+  const score = hasResult ? Math.min(Math.max(riskScore, 0), 1) : 0;
+  const angle = hasResult ? (-135 + score * 270) : 0;
+  const dash = hasResult ? score * 251 : 2;
+  const meta = categoryMeta(riskCategory);
+
+  const progress = svg.querySelector(`#${svg.id}-progress`);
+  const needle = svg.querySelector(`#${svg.id}-needle`);
+  const text = svg.querySelector(`#${svg.id}-score`);
+
+  progress.style.transition = "stroke-dasharray 950ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+  progress.setAttribute("stroke-dasharray", `${dash} 251`);
+
+  if (needle) {
+    needle.style.transition = "transform 950ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+    needle.setAttribute("transform", `rotate(${angle} 110 150)`);
+  }
+
+  animateScore(text, hasResult ? Math.round(score * 100) : 0);
+  text.setAttribute("fill", hasResult ? meta.color : "#8a9eb8");
 }
 
 function updateGauges(riskScore, riskCategory) {
@@ -155,6 +245,7 @@ function setText(id, text) {
   el.innerHTML = text;
 }
 
+// Updated renderResult with confetti
 function renderResult(result) {
   const meta = categoryMeta(result.risk_category);
 
@@ -165,13 +256,15 @@ function renderResult(result) {
     label.textContent = meta.label;
     label.style.color = meta.color;
     label.className = `risk-label ${result.risk_category}`;
-  } else {
-    console.error("renderResult: #risk-label not found in the DOM");
   }
 
-  setText("model-version", result.model_version);
-  setText("risk-reasons", result.reasons.map((r) => `<li>✓ ${r}</li>`).join(""));
-  setText("suggestions", result.recommendations.map((r) => `<div class="suggestion">💡 ${r}</div>`).join(""));
+  if (result.risk_category === "low") {
+    launchConfetti();
+  }
+
+  setText("model-version", result.model_version || "1.0");
+  setText("risk-reasons", result.reasons ? result.reasons.map(r => `<li>✓ ${r}</li>`).join("") : "");
+  setText("suggestions", result.recommendations ? result.recommendations.map(r => `<div class="suggestion">💡 ${r}</div>`).join("") : "");
 }
 
 const form = document.getElementById("assessment-form-el");
@@ -214,3 +307,24 @@ if (form) {
 // ReferenceError: result is not defined every time the page loaded. It did
 // nothing useful (gauges are already updated inside the submit handler on
 // success) and has been removed.
+
+function animateScore(textEl, targetPercent) {
+  let start = 0;
+  const duration = 1200;
+  const startTime = performance.now();
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = Math.floor(start + (targetPercent - start) * progress);
+    
+    textEl.textContent = current + "%";
+    
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      textEl.textContent = targetPercent + "%";
+    }
+  }
+  requestAnimationFrame(update);
+}

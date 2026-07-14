@@ -7,6 +7,8 @@
   --accent-teal-glow: rgba(45, 212, 191, 0.35);
   --accent-amber: #f2a65a;
   --accent-red: #ef5b5b;
+  --gold: #f4d35e;
+  --uae-gold: #d4af37;
   --text-primary: #e8eef5;
   --text-muted: #8ca0b3;
   --text-faint: #5c7086;
@@ -24,7 +26,7 @@ body {
   background: radial-gradient(ellipse at top, #0e1830 0%, var(--bg-deep) 55%);
   color: var(--text-primary);
   font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
+  /* -webkit-font-smoothing: antialiased; */
 }
 
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.01em; margin: 0; }
@@ -152,4 +154,68 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing:
 .footer {
   margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border-subtle); color: var(--text-faint);
   font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+
+svg g[id$="-needle"] {
+    transform-origin: 110px 150px;
+    transition: transform .8s cubic-bezier(.16,1,.3,1);
+}
+
+svg path[id$="-progress"] {
+    transition: stroke-dasharray .8s cubic-bezier(.16,1,.3,1);
+}
+
+/* .gauge-panel {
+  background: linear-gradient(145deg, #0f1c3a, #1a2338);
+  border-radius: 24px;
+  border: 1px solid rgba(244, 163, 97, 0.15);
+  box-shadow: 
+    0 25px 50px -12px rgb(0 0 0 / 0.4),
+    inset 0 2px 0 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.23,1,0.32,1);
+} */
+
+.gauge-panel {
+  background: linear-gradient(148deg, #0c162f, #111d3f);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255,255,255,0.06);
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.disclaimer-banner {
+  background: rgba(30, 42, 77, 0.6);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin-top: 20px;
+  line-height: 1.5;
+}
+
+.gauge-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent, rgba(0, 230, 195, 0.04));
+  pointer-events: none;
+  border-radius: 28px;
+}
+
+.gauge-inner {
+  transition: transform 0.1s cubic-bezier(0.23,1,0.32,1);
+}
+
+/* UAE luxury accent line */
+.gauge-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #f4a261, #e63946, transparent);
+  opacity: 0.6;
 }

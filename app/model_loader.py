@@ -7,10 +7,11 @@ the FastAPI app object.
 """
 
 import logging
+import os
 from pathlib import Path
-from typing import Optional
-import json, os
-import joblib
+# from typing import Optional
+# import json, os
+# import joblib
 
 from app.config import settings
 
@@ -83,40 +84,37 @@ class ModelState:
         )
         logger.info(f"Loading Model {model_uri}")
 
-        # self.model = mlflow.pyfunc.load_model(model_uri)
-        pyfunc_model = mlflow.pyfunc.load_model(model_uri)
+        self.model = mlflow.pyfunc.load_model(model_uri)
+        # pyfunc_model = mlflow.pyfunc.load_model(model_uri)
 
-        self.model = pyfunc_model
-        print("MODEL IMPL:", type(self.model._model_impl))
 
-        if hasattr(self.model._model_impl, "sklearn_model"):
-            print("Native sklearn model:",
-                type(self.model._model_impl.sklearn_model))
+        # print("MODEL IMPL:", type(self.model._model_impl))
+
+        # if hasattr(self.model._model_impl, "sklearn_model"):
+        #     print("Native sklearn model:",
+        #         type(self.model._model_impl.sklearn_model))
             
         # model = mlflow.lightgbm.load_model(model_uri)
         self.model_version = model_uri
 
         local_path = download_artifacts(model_uri)
 
-        logger.info("Downloaded model artifact path: %s", local_path)
+        # logger.info("Downloaded model artifact path: %s", local_path)
 
-        for root, dirs, files in os.walk(local_path):
-            logger.info("DIR=%s FILES=%s", root, files)
+        # for root, dirs, files in os.walk(local_path):
+        #     logger.info("DIR=%s FILES=%s", root, files)
 
         # metadata = mlflow.artifacts.load_dict(f"{model_uri}/model_metadata.json")
         
         # Download complete model artifact directory
-        local_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
+        # local_path = mlflow.artifacts.download_artifacts(artifact_uri=model_uri)
 
-        metadata_file = os.path.join(
-            local_path,
-            "model_metadata.json"
-        )
+        metadata_file = Path(local_path) / "model_metadata.json"
 
-        if not os.path.exists(metadata_file):
-            raise FileNotFoundError(f"model_metadata.json missing: {metadata_file}")
+        if not metadata_file.exists():
+            raise FileNotFoundError(metadata_file)
 
-        with open(metadata_file, "r") as f:
+        with metadata_file.open() as f:
             metadata = json.load(f)
 
         self.threshold = float(metadata["threshold"])
@@ -152,7 +150,7 @@ class ModelState:
             # Fail loudly in logs, don't crash the process — /health reports
             # unhealthy and the K8s readiness probe holds traffic back
             # instead of the pod crash-looping.
-            logger.exception("Failed to load model: %s")
+            logger.exception("Failed to load model")
             raise
 
 model_state = ModelState()

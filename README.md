@@ -414,12 +414,34 @@ mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./
 
 ### FOR DOCKER AND DEPLOYMENT - LOCALALY TESTING WE NEED
 
+PS F:\_DataScienc_KNaik\NEW_GIT_PROJECT_DS\MLOPS_FASTAPI_GKE\mlops-fastapi-docker-gke 
+
 mlflow server `
-   --backend-store-uri sqlite:///mlflow.db `
-   --default-artifact-root ./mlruns `
-   --host 0.0.0.0 `
-   --port 5000 `
-   --allowed-hosts "host.docker.internal,localhost,127.0.0.1"
+  --backend-store-uri sqlite:///mlflow.db `
+  --registry-store-uri sqlite:///mlflow.db `
+  --artifacts-destination ./mlartifacts `
+  --serve-artifacts `
+  --host 0.0.0.0 `
+  --port 5000 `
+  --allowed-hosts "host.docker.internal:5000,localhost:5000,127.0.0.1:5000"
 
+## DOCKER IMAGE BUILD
+docker build --no-cache -t uae-ml-api:latest .
 
+## DOCKER IMAGE RUN
+docker run --rm -p 8000:8000 `
+  -e MLFLOW_TRACKING_URI=http://host.docker.internal:5000 `
+  -e MLFLOW_MODEL_NAME=diabetes-risk-model-v3 `
+  -e MLFLOW_MODEL_ALIAS=champion `
+  uae-ml-api:latest
+
+docker run --rm `
+   -p 8000:8000 `
+   -e MLFLOW_TRACKING_URI=http://host.docker.internal:5000 `
+   -e MODEL_NAME=diabetes-risk-model `
+   -e MODEL_ALIAS=champion `
+   -v "${PWD}\artifacts:/app/artifacts" `
+   --name uae-ml-api `
+   uae-ml-api:latest
+  
 </div>

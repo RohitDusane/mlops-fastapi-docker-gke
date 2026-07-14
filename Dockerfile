@@ -4,7 +4,7 @@
 # Stage 1 : Builder
 #########################################
 
-FROM python:3.12-slim AS builder
+FROM python:3.10-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -26,14 +26,21 @@ RUN pip install --upgrade pip setuptools wheel --no-cache-dir && \
 # RUN pip install --prefix=/install -r requirements.txt && \
 #     pip install --prefix=/install -r requirements-dev.txt
 
-RUN find /install -type f -name "*.pyc" -delete && \
-    find /install -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+# RUN find /install -type f -name "*.pyc" -delete && \
+#     find /install -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+RUN find /install -type d -name "__pycache__" -exec rm -rf {} + && \
+    find /install -type f -name "*.pyc" -delete && \
+    find /install -type f -name "*.pyo" -delete && \
+    find /install -type d \( -name tests -o -name test -o -name testing \) -exec rm -rf {} + && \
+    find /install -type d \( -name docs -o -name examples \) -exec rm -rf {} + && \
+    find /install -type f \( -name "*.c" -o -name "*.cpp" -o -name "*.pyx" \) -delete
 
 #########################################
 # Stage 2 : Runtime
 #########################################
 
-FROM python:3.12-slim AS runtime
+FROM python:3.10-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -43,7 +50,7 @@ ARG BUILD_DATE
 ARG GIT_SHA
 
 LABEL maintainer="rohit@yourdomain.com" \
-      org.opencontainers.image.vendor="Rohit K Naik" \
+      org.opencontainers.image.vendor="Rohitt R Dusane" \
       org.opencontainers.image.url="https://your-portfolio.com" \
       org.opencontainers.image.documentation="https://github.com/<your-username>/mlops-fastapi/blob/main/README.md" \
       org.opencontainers.image.title="Diabetes Risk Prediction API (UAE)" \
@@ -92,4 +99,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     # CMD wget --no-verbose --tries=1 --spider http://localhost:8000/docs || exit 1
 
 # Gunicorn + UvicornWorker = production-grade async serving
-CMD ["gunicorn", "app.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "2", "--bind", "0.0.0.0:8000", "--graceful-timeout", "30", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "app.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "1", "--bind", "0.0.0.0:8000", "--graceful-timeout", "30", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]

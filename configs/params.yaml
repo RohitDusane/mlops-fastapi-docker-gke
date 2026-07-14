@@ -29,7 +29,8 @@ evaluation:
   max_precision_regression: 0.10
 
 mlflow:
-  tracking_uri: http://localhost:5000
+  # tracking_uri: http://localhost:5000
+  tracking_uri: http://mlflow-service:5000
   experiment_name: diabetes-risk-screening-v3
   registered_model_name: diabetes-risk-model-v3
   model_alias: champion
