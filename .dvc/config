@@ -4,5 +4,5 @@
     url = https://dagshub.com/stat.data247/mlops_data_db_risk.dvc
     auth = basic
 ['remote "s3remote"']
-    url = s3://uae-mlops-model-registry/data
+    url = s3://diabetes-app-dvc-146637284455
     region = me-central-1
