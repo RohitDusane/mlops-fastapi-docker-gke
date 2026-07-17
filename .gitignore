@@ -209,3 +209,25 @@ k8s-deploy.yml/
 src/diabetes_risk_prediction/components/feature_engineering.py
 src/diabetes_risk_prediction/components/hyperparameter_tuning.py
 src/diabetes_risk_prediction/components/model_registry.py
+# MLflow local tracking data
+mlruns/
+${MLFLOW_TRACKING_URI}/
+mlflow-server/
+mlartifacts/
+
+# MLflow artifacts
+artifacts/
+k8s-deploy.yml/
+# Model registry generated files
+models/
+*.pkl
+*.joblib
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.venv/
+venv/
