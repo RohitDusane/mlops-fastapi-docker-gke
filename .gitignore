@@ -231,3 +231,4 @@ __pycache__/
 .env
 .venv/
 venv/
+k8s-deploy.yml

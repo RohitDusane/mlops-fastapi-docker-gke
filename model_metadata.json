@@ -1,6 +1,6 @@
 {
     "model_type": "lightgbm",
-    "threshold": 0.4855631059248221,
+    "threshold": 0.4838659333664828,
     "feature_columns": [
         "HighBP",
         "HighChol",
