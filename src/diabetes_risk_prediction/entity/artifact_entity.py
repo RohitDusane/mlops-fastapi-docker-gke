@@ -52,6 +52,9 @@ class ModelTrainerArtifact:
     best_hyperparameters: dict
     model_type: str
     decision_threshold: float
+    registered_model_name: str
+    model_version: str | None = None
+    alias: str | None = None
 
 
 @dataclass
@@ -62,9 +65,13 @@ class ModelEvaluationArtifact:
     best_model_metrics: Optional[dict]
     # trained_model_file_path: str
     mlflow_run_id: str
+    registered_model_name: str
+    alias: str
 
 @dataclass
 class ModelPusherArtifact:
     is_model_pushed: bool
     mlflow_model_version: Optional[str]
+    alias: str
+    registered_model_name: str
     # saved_model_path: str

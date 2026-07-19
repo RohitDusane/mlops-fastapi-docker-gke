@@ -11,11 +11,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # model_source: str = "local"
     # model_path: str = "artifacts/model_trainer/model.joblib"
-    metadata_path: str = "artifacts/model_trainer/metadata.json"
+    metadata_path: str = "artifacts/model_trainer/model_metadata.json"
 
     # mlflow_tracking_uri: str = ("http://mlflow.mlflow.svc.cluster.local:5000")
     mlflow_tracking_uri:str = "http://mlflow:5000"
-    mlflow_model_name: str = "diabetes-risk-model-v3"
+    mlflow_model_name: str = "diabetes-risk-model"
     mlflow_model_alias: str = "champion"
     # mlflow_model_stage: str = "Production"
 

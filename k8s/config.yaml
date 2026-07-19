@@ -4,9 +4,6 @@ metadata:
   name: diabetes-config
 
 data:
-
   MLFLOW_TRACKING_URI: "http://mlflow.mlflow.svc.cluster.local:5000"
-
   MLFLOW_MODEL_NAME: "diabetes-risk-model"
-
   MLFLOW_MODEL_ALIAS: "champion"

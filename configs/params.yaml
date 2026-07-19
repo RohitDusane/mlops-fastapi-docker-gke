@@ -11,11 +11,10 @@ model_training:
   n_trials: 15
   cv_folds: 5
   cv_metric: average_precision # PR-AUC — more informative than ROC-AUC under class imbalance
-  enable_pruning: true
-  calibrate_probabilities: False  # set True to wrap the final model in CalibratedClassifierCV first
+  enable_pruning: True
+  optuna_n_jobs: 1
 
- # ---- Threshold tuning (decision threshold ≠ 0.5 for imbalanced screening) ----
-threshold:
+  # ---- Threshold tuning (decision threshold ≠ 0.5 for imbalanced screening) ----
   target_recall_floor: 0.80      # tune threshold to the highest cutoff that still meets this recall
   calibrate_probabilities: False  # set True to wrap the final model in CalibratedClassifierCV first
 
@@ -32,17 +31,18 @@ quality_gate:
 evaluation:
   changed_threshold_score: 0.01  # new model must beat current Production by at least this much
   max_precision_regression: 0.10
-  mlflow_tracking_uri: "http://localhost:5000"
-  mlflow_registered_model_name: "diabetes-risk-model"
-  mlflow_model_alias: "champion"
+  # mlflow_tracking_uri: "http://localhost:5000"
+  # mlflow_tracking_uri: ${MLFLOW_TRACKING_URI}
+  # mlflow_registered_model_name: "diabetes-risk-model"
+  # mlflow_model_alias: "champion"
 
 mlflow:
   # tracking_uri: http://localhost:5000
   # tracking_uri: http://mlflow-service:5000
   tracking_uri: ${MLFLOW_TRACKING_URI}
-  experiment_name: diabetes-risk-screening
-  registered_model_name: diabetes-risk-model
-  model_alias: champion
+  experiment_name: "diabetes-risk-screening"
+  registered_model_name: "diabetes-risk-model"
+  model_alias: "champion"
 
   # set MLFLOW_TRACKING_URI=http://localhost:5000
   # env:

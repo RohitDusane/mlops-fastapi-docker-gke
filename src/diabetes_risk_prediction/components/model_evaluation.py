@@ -6,6 +6,7 @@ import sys
 import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
+from datetime import datetime, timezone
  
 from diabetes_risk_prediction.entity.artifact_entity import (
     ModelEvaluationArtifact,
@@ -32,12 +33,34 @@ class ModelEvaluation:
         try:
             self.model_trainer_artifact = model_trainer_artifact
             self.config = model_evaluation_config
+            if not 0 <= self.config.max_precision_regression <= 1:
+                raise CustomException("max_precision_regression must be between 0 and 1", sys,)
+
+            if self.config.changed_threshold_score < 0:
+                raise CustomException("changed_threshold_score must be non-negative", sys,)
         except Exception as e:
             raise CustomException(f"Error initializing ModelEvaluation: {e}", sys)
 
     @staticmethod
     def _safe_get(metrics: dict, key: str, default: float = 0.0) -> float:
         return metrics.get(key, default)
+    
+    def _validate_metrics(self, metrics: dict) -> dict:
+        required = [
+            "roc_auc",
+            "recall",
+            "f1_score",
+            "precision",
+        ]
+
+        missing = [key for key in required if key not in metrics]
+        if missing:
+            raise CustomException(f"Missing evaluation metrics: {missing}", sys,)
+
+        invalid = {key: value for key, value in metrics.items() if value < 0 or value > 1}
+        if invalid:
+            raise CustomException(f"Invalid metric values: {invalid}", sys,)
+        return metrics
 
     def _get_current_production_metrics(self) -> dict | None:
         """
@@ -45,7 +68,7 @@ class ModelEvaluation:
         genuinely no champion registered yet (expected on the very first
         training run — this is the only case that should auto-accept).
         """
-        client = MlflowClient()
+        client = MlflowClient(tracking_uri=self.config.mlflow_tracking_uri)
         try:
             # CHANGE: get_model_version_by_alias returns a single ModelVersion
             # object, not a list. The previous code did `versions[0].run_id`,
@@ -92,7 +115,7 @@ class ModelEvaluation:
 
     @staticmethod
     def _compute_score(metrics: dict) -> float:
-        return sum(SCORE_WEIGHTS[k] * metrics.get(k, 0.0) for k in SCORE_WEIGHTS)
+        return sum(SCORE_WEIGHTS[k] * metrics[k] for k in SCORE_WEIGHTS)
 
     def _passes_precision_guard(self, new_metrics: dict, current_metrics: dict | None) -> tuple[bool, str]:
         if current_metrics is None:
@@ -121,27 +144,33 @@ class ModelEvaluation:
     def initiate_model_evaluation(self) -> ModelEvaluationArtifact:
         try:
             logging.info("Starting model evaluation.")
-            mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
+            # mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
 
             raw_new_metrics = self.model_trainer_artifact.test_metrics
+
             logging.info(
-                f"Evaluating model: {self.model_trainer_artifact.model_type} "
-                f"run_id={self.model_trainer_artifact.mlflow_run_id}"
+                "Evaluating model=%s run_id=%s",
+                self.model_trainer_artifact.model_type,
+                self.model_trainer_artifact.mlflow_run_id,
             )
-            
+                        
+            self._validate_metrics(raw_new_metrics)
+
             new_metrics = {
-                "roc_auc": self._safe_get(raw_new_metrics, "roc_auc"),
-                "f1_score": self._safe_get(raw_new_metrics, "f1_score"),
-                "recall": self._safe_get(raw_new_metrics, "recall"),
-                "precision": self._safe_get(raw_new_metrics, "precision"),
+                "roc_auc": raw_new_metrics["roc_auc"],
+                "f1_score": raw_new_metrics["f1_score"],
+                "recall": raw_new_metrics["recall"],
+                "precision": raw_new_metrics["precision"],
             }
             current_metrics = self._get_current_production_metrics()
+            if current_metrics is not None:
+                self._validate_metrics(current_metrics)
             rejection_reasons = []  # captured and persisted for audit, not just logged
  
             if current_metrics is None:
+                logging.info("No baseline model — accepting validated first model."    )
                 is_accepted = True
                 improved_score = self._compute_score(new_metrics)
-                logging.info("No baseline model — accepting first model.")
             else:
                 score_delta = self._compute_score(new_metrics) - self._compute_score(current_metrics)
                 score_ok = score_delta > self.config.changed_threshold_score
@@ -164,8 +193,12 @@ class ModelEvaluation:
                     + (f" — {precision_reason}" if not precision_ok else "")
                     + f" | Accepted: {is_accepted}"
                 )
-                logging.info(f"New metrics: {new_metrics} | Current champion metrics: {current_metrics}")
-            
+                # logging.info(f"New metrics: {new_metrics} | Current champion metrics: {current_metrics}")
+                logging.info(
+                    "New metrics=%s | Champion metrics=%s",
+                    new_metrics,
+                    current_metrics,
+                )
             evaluation_dir = self.config.evaluation_dir
             os.makedirs(evaluation_dir, exist_ok=True)
             metrics_path = os.path.join(evaluation_dir, "metrics.json")
@@ -179,7 +212,10 @@ class ModelEvaluation:
                         "champion_metrics": current_metrics,
                         "rejection_reasons": rejection_reasons,  # auditable, not just log-only
                         "mlflow_run_id": self.model_trainer_artifact.mlflow_run_id,  # traceability
-                        "git_commit": self._current_git_sha(),  # traceability
+                        "registered_model_name": self.config.mlflow_registered_model_name,
+                        "alias": self.config.mlflow_model_alias,
+                        "git_commit": self._current_git_sha(),  # traceability,
+                        "evaluated_at": datetime.now(timezone.utc).isoformat(),
                     },
                     f, indent=4)
 
@@ -192,6 +228,8 @@ class ModelEvaluation:
                 best_model_metrics=current_metrics,
                 # trained_model_file_path=self.model_trainer_artifact.trained_model_file_path,
                 mlflow_run_id=self.model_trainer_artifact.mlflow_run_id,
+                registered_model_name= self.config.mlflow_registered_model_name,
+                alias= self.config.mlflow_model_alias,
             )
         except Exception as e:
             raise CustomException(f"Error during model evaluation: {e}", sys)

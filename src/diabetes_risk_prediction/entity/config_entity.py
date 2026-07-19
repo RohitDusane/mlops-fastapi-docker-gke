@@ -46,21 +46,27 @@ class ModelTrainerConfig:
     random_state: int = 24
     evaluation_dir: str = params["artifacts"]["evaluation_dir"]
 
-    candidate_algorithms: list = field(default_factory=lambda: params["model_training"]["candidate_algorithms"])
+    candidate_algorithms: tuple = field(default_factory=lambda: tuple(params["model_training"]["candidate_algorithms"]))
     n_trials: int = params["model_training"]["n_trials"]
     cv_folds: int = params["model_training"]["cv_folds"]
     cv_metric: str = params["model_training"]["cv_metric"]
     enable_pruning: bool = params["model_training"]["enable_pruning"]
+    optuna_n_jobs: int = params["model_training"]["optuna_n_jobs"]
+    optuna_storage_path: str | None = None
+
     calibrate_probabilities: bool = params["model_training"]["calibrate_probabilities"]
-    target_recall_floor: float = params["threshold"]["target_recall_floor"]
+    target_recall_floor: float = params["model_training"]["target_recall_floor"]
+
     min_roc_auc: float = params["quality_gate"]["min_roc_auc"]
     min_recall: float = params["quality_gate"]["min_recall"]
     min_f1: float = params["quality_gate"]["min_f1"]
     overfitting_threshold: float = params["quality_gate"]["overfitting_threshold"]
     target_metric: str = params["quality_gate"]["target_metric"]
+
     mlflow_tracking_uri: str = resolve_env(params["mlflow"]["tracking_uri"])
     mlflow_experiment_name: str = params["mlflow"]["experiment_name"]
     mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
+    mlflow_model_alias: str = params["mlflow"]["model_alias"]
 
 # @dataclass
 # class ModelTrainerConfig:
@@ -102,11 +108,12 @@ class ModelTrainerConfig:
 
 @dataclass
 class ModelEvaluationConfig:
-    evaluation_dir: str = "artifacts/model_evaluation"
+    evaluation_dir: str = params["artifacts"]["evaluation_dir"]
     changed_threshold_score: float = params["evaluation"]["changed_threshold_score"]
     max_precision_regression: float = params["evaluation"]["max_precision_regression"]
 
-    mlflow_tracking_uri: str = params["mlflow"]["tracking_uri"]
+    mlflow_tracking_uri: str = resolve_env(params["mlflow"]["tracking_uri"])
+    mlflow_experiment_name: str = params["mlflow"]["experiment_name"]
     mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
     mlflow_model_alias: str = params["mlflow"]["model_alias"]
 
@@ -120,7 +127,7 @@ class ModelEvaluationConfig:
 
 @dataclass
 class ModelPusherConfig:
-    mlflow_tracking_uri: str = params["mlflow"]["tracking_uri"]
+    mlflow_tracking_uri: str = resolve_env(params["mlflow"]["tracking_uri"])
     mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
     mlflow_model_alias: str = params["mlflow"]["model_alias"]
     

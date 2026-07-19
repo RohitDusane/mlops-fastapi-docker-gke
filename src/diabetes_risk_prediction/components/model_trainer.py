@@ -1,43 +1,52 @@
+import os
 import sys
-import mlflow
-import mlflow.sklearn
+import json
+import tempfile
+import shutil
+
 import numpy as np
 import pandas as pd
 import optuna
-from lightgbm import LGBMClassifier
+import mlflow
+import mlflow.sklearn
+
+from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
+
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import (StratifiedKFold, cross_val_predict, train_test_split)
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-import joblib
+from sklearn.calibration import CalibratedClassifierCV
 
-# try:
-#     from xgboost import XGBClassifier
-#     _XGBOOST_AVAILABLE = True
-# except ImportError:
-#     _XGBOOST_AVAILABLE = False
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
     balanced_accuracy_score,
+    confusion_matrix,
     f1_score,
     precision_recall_curve,
     precision_score,
     recall_score,
     roc_auc_score,
+    
 )
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.pipeline import Pipeline
+
+from lightgbm import LGBMClassifier
 
 from diabetes_risk_prediction.entity.artifact_entity import (
     DataTransformationArtifact,
-    ModelTrainerArtifact,
+    ModelTrainerArtifact
 )
-from diabetes_risk_prediction.entity.config_entity import ModelTrainerConfig
+from diabetes_risk_prediction.entity.config_entity import (ModelTrainerConfig)
 from diabetes_risk_prediction.exception.custom_exception import CustomException
 from diabetes_risk_prediction.logger.logging import logging
-from diabetes_risk_prediction.utils.common import load_numpy_array_data, load_object
-import json
-import os
+
+from diabetes_risk_prediction.utils.common import (
+    load_numpy_array_data,
+    load_object
+)
 
 class ModelTrainer:
     def __init__(
@@ -57,10 +66,17 @@ class ModelTrainer:
     def _compute_metrics(self, model, X, y, threshold: float) -> dict:
         y_proba = model.predict_proba(X)[:, 1]
         y_pred = (y_proba >= threshold).astype(int)
+        tn,fp,fn,tp = confusion_matrix(y, y_pred).ravel()
+
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        recall_value = round(recall_score(y, y_pred), 4)
+
         return {
             "accuracy": round(accuracy_score(y, y_pred), 4),
             "precision": round(precision_score(y, y_pred, zero_division=0), 4),
-            "recall": round(recall_score(y, y_pred), 4),
+            "recall": recall_value,
+            "sensitivity": recall_value,
+            "specificity": round(specificity, 4),
             "f1_score": round(f1_score(y, y_pred), 4),
             "roc_auc": round(roc_auc_score(y, y_proba), 4),
             "pr_auc": round(average_precision_score(y, y_proba), 4),
@@ -69,44 +85,45 @@ class ModelTrainer:
 
     # ---------------- Threshold tuning ---------------- #
 
-    def optimize_threshold(self, model, X_val, y_val) -> float:
+    def _threshold_from_probabilities(self, y_true, y_proba) -> float:
         """
-        Picks the highest decision threshold that still keeps recall at or
-        above `target_recall_floor` — maximizes precision subject to a
-        recall floor, rather than optimizing raw F1, since in a screening
-        context a false negative (missed at-risk patient) is worse than a
-        false positive (unnecessary follow-up test).
-
-        Caveat: this is tuned on a held-out split of the training data
-        (X_val), then the final model is refit on the FULL training set
-        afterward — meaning the refit model's probability surface shifts
-        slightly from the one the threshold was tuned against. This is a
-        reasonable approximation, not a perfect calibration; a more rigorous
-        version would tune the threshold via out-of-fold predictions across
-        the full training set (cross_val_predict) instead of a single
-        train/val split. Worth upgrading if threshold precision matters more
-        than the extra CV cost.
+        Shared core: picks the highest decision threshold that still keeps
+        recall at or above `target_recall_floor` — maximizes precision
+        subject to a recall floor, since in a screening context a false
+        negative (missed at-risk patient) is worse than a false positive.
         """
-        y_proba = model.predict_proba(X_val)[:, 1]
-        precision, recall, thresholds = precision_recall_curve(y_val, y_proba)
-
+        precision, recall, thresholds = precision_recall_curve(y_true, y_proba)
         valid = np.where(recall[:-1] >= self.config.target_recall_floor)[0]
         if len(valid):
             return float(thresholds[valid[-1]])
-
         logging.warning(
             f"No threshold achieves the target recall floor "
             f"({self.config.target_recall_floor}) — falling back to 0.5"
         )
         return 0.5
+ 
+    def optimize_threshold(self, model, X_val, y_val) -> float:
+        """Threshold tuning against a single held-out split (a model must already be fit)."""
+        y_proba = model.predict_proba(X_val)[:, 1]
+        return self._threshold_from_probabilities(y_val, y_proba)
+ 
+    def optimize_threshold_from_probs(self, y_true, y_proba) -> float:
+        """
+        CHANGE: this method was being called but never defined — guaranteed
+        AttributeError on every run. Added as a thin wrapper so the
+        out-of-fold cross_val_predict approach (more rigorous than a single
+        train/val split — this closes the exact gap the original
+        docstring flagged as "worth upgrading") actually works.
+        """
+        return self._threshold_from_probabilities(y_true, y_proba)
 
     # ---------------- Multi-algorithm search space ---------------- #
 
     def _suggest_hyperparams(self, trial, model_type: str, scale_pos_weight: float) -> dict:
         if model_type == "random_forest":
             return {
-                "n_estimators": trial.suggest_int("rf_n_estimators", 100, 300, step=25),
-                "max_depth": trial.suggest_int("rf_max_depth", 4, 16),
+                "n_estimators": trial.suggest_int("rf_n_estimators", 100, 400, step=25),
+                "max_depth": trial.suggest_int("rf_max_depth", 4, 20),
                 "min_samples_split": trial.suggest_int("rf_min_samples_split", 2, 8),
                 "min_samples_leaf": trial.suggest_int("rf_min_samples_leaf", 1, 5),
                 "max_features": trial.suggest_categorical("rf_max_features", ["sqrt", "log2"]),
@@ -118,7 +135,7 @@ class ModelTrainer:
             }
         if model_type == "lightgbm":
             return {
-                "n_estimators": trial.suggest_int("lgbm_n_estimators", 200, 600, step=50),
+                "n_estimators": trial.suggest_int("lgbm_n_estimators", 200, 700, step=50),
                 "learning_rate": trial.suggest_float("lgbm_learning_rate", 0.01, 0.2, log=True),
                 "num_leaves": trial.suggest_int("lgbm_num_leaves", 31, 200),
                 "max_depth": trial.suggest_int("lgbm_max_depth", -1, 12),
@@ -144,7 +161,7 @@ class ModelTrainer:
             # tuned RF/LGBM can't beat simple logistic regression by much,
             # that's worth knowing, not just worth beating.
             return {
-                "C": trial.suggest_float("logreg_C", 1e-3, 10.0, log=True),
+                "C": trial.suggest_float("logreg_C", 0.001, 10.0, log=True),
                 "class_weight": "balanced",
                 "max_iter": 2000,
                 "random_state": self.config.random_state,
@@ -183,11 +200,15 @@ class ModelTrainer:
     # ---------------- Optuna objective ---------------- #
 
     def _objective(self, trial, X_train, y_train, scale_pos_weight):
-        model_type = trial.suggest_categorical("model_type", list(self.config.candidate_algorithms))
+
+        model_type = trial.suggest_categorical("model_type", self.config.candidate_algorithms)
         params = self._suggest_hyperparams(trial, model_type, scale_pos_weight)
         model = self._build_model(model_type, params)
 
-        skf = StratifiedKFold(n_splits=self.config.cv_folds, shuffle=True, random_state=self.config.random_state)
+        skf = StratifiedKFold(
+            n_splits=self.config.cv_folds, 
+            shuffle=True, 
+            random_state=self.config.random_state)
         fold_scores = []
 
         for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_train, y_train)):
@@ -198,7 +219,6 @@ class ModelTrainer:
             y_val_fold = y_train[val_idx]
 
             model.fit(X_train_fold, y_train_fold)
-
             y_proba = model.predict_proba(X_val_fold)[:, 1]
 
             score = (
@@ -218,15 +238,38 @@ class ModelTrainer:
                 if trial.should_prune():
                     raise optuna.TrialPruned()
 
+
         mean_score = float(np.mean(fold_scores))
 
         with mlflow.start_run(nested=True):
+            mlflow.log_param("algorithm", model_type)
             mlflow.set_tag("model_type", model_type)
             mlflow.log_params(params)
+            mlflow.log_metric("cv_fold_min", float(np.min(fold_scores)))
+            mlflow.log_metric("cv_fold_max", float(np.max(fold_scores)))
             mlflow.log_metric(f"cv_{self.config.cv_metric}_mean", mean_score)
             mlflow.log_metric(f"cv_{self.config.cv_metric}_std", float(np.std(fold_scores)))
 
         return mean_score
+    
+    def _get_feature_importance_source(self, model):
+        """
+        CHANGE: fixed. When calibrate_probabilities=True, `final_model` is a
+        CalibratedClassifierCV — its `.estimator` attribute after fit() is
+        the original UNFITTED prototype (sklearn keeps the constructor arg
+        as-is; the actually-fitted base estimators live inside
+        `calibrated_classifiers_[i].estimator`). Calling
+        `.feature_importances_` on the unfitted prototype raises
+        NotFittedError. Previously dormant since calibrate_probabilities
+        defaults to False, but a real, guaranteed break the moment someone
+        flips that flag on.
+        """
+        if hasattr(model, "calibrated_classifiers_") and model.calibrated_classifiers_:
+            try:
+                return model.calibrated_classifiers_[0].estimator
+            except Exception:
+                return None
+        return model
 
     # ---------------- Main entrypoint ---------------- #
 
@@ -253,15 +296,35 @@ class ModelTrainer:
             mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
             mlflow.set_experiment(self.config.mlflow_experiment_name)
 
-            with mlflow.start_run(run_name="hyperparameter-search") as parent_run:
+            # CHANGE: verbosity now set BEFORE optimize() — previously set
+            # after study.optimize() completed, so it had zero effect on the
+            # actual search's log spam, only on anything logged afterward.
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+            with mlflow.start_run(run_name="model-training") as parent_run:
+                # Hyperparameter search
                 pruner = optuna.pruners.MedianPruner() if self.config.enable_pruning else optuna.pruners.NopPruner()
-                study = optuna.create_study(direction="maximize", pruner=pruner)
+                # study = optuna.create_study(direction="maximize", pruner=pruner)
+                
+                if self.config.optuna_storage_path:
+                    os.makedirs(os.path.dirname(self.config.optuna_storage_path) or ".", exist_ok=True)
+                    study = optuna.create_study(
+                        study_name="diabetes-risk-model",
+                        storage=f"sqlite:///{self.config.optuna_storage_path}",
+                        load_if_exists=True,
+                        direction="maximize",
+                        pruner=pruner,
+                    )
+                else:
+                    study = optuna.create_study(direction="maximize", pruner=pruner)  # in-memory, fresh every run
+                
                 study.optimize(
                     lambda trial: self._objective(trial, X_train, y_train, scale_pos_weight),
                     n_trials=self.config.n_trials,
+                    n_jobs=self.config.optuna_n_jobs,
                 )
 
-                best_params = dict(study.best_params)
+                best_params = dict(study.best_params.copy())
                 model_type = best_params.pop("model_type")
                 # Remaining keys are prefixed (rf_/lgbm_/logreg_) to stay
                 # unique within one Optuna search space — strip the prefix
@@ -287,9 +350,8 @@ class ModelTrainer:
                         "n_jobs": -1,
                     })
                 elif model_type == "logistic_regression":
-                    final_params.update({
-                        "class_weight": "balanced",
-                    })
+                    final_params.update({"class_weight": "balanced",})
+
                 final_params["random_state"] = self.config.random_state
 
                 logging.info(f"Best algorithm: {model_type} | Best CV {self.config.cv_metric}: {study.best_value:.4f}")
@@ -298,26 +360,27 @@ class ModelTrainer:
                 # final_model = self._build_model(model_type, {**final_params, "n_jobs": -1} if model_type != "logistic_regression" else final_params)
                 final_model = self._build_model(model_type, final_params)
 
-                # Threshold tuned on a held-out split of the training data —
-                # see optimize_threshold()'s docstring for the caveat about
-                # refitting afterward.
-                X_fit, X_val, y_fit, y_val = train_test_split(
-                    X_train, y_train, test_size=0.2, stratify=y_train, random_state=self.config.random_state,
-                )
-
-                final_model.fit(X_fit, y_fit)
-                threshold = self.optimize_threshold(final_model, X_val, y_val)
-
                 if self.config.calibrate_probabilities:
                     from sklearn.calibration import CalibratedClassifierCV
-                    logging.info("Calibrating probabilities (isotonic, cv=3) before final fit.")
-                    final_model = CalibratedClassifierCV(final_model, method="isotonic", cv=3)
-
-                # Refit on the full training set for the artifact that
-                # actually ships — see the threshold caveat above regarding
-                # the resulting slight probability-surface shift.
+                    logging.info("Calibrating probabilities (sigmoid, cv=5).")
+                    final_model = CalibratedClassifierCV(estimator=final_model, method="sigmoid", cv=5, n_jobs=1)
+ 
+                # Out-of-fold probabilities for threshold tuning — more
+                # rigorous than a single train/val split, since every
+                # training example contributes to exactly one out-of-fold
+                # prediction rather than only 20% of the data ever being
+                # "held out."
+                oof_probabilities = cross_val_predict(
+                    final_model, X_train, y_train,
+                    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=self.config.random_state),
+                    method="predict_proba", n_jobs=1,
+                )[:, 1]
+ 
+                threshold = self.optimize_threshold_from_probs(y_train, oof_probabilities)  # CHANGE: now a real method
+ 
+                # Final fit on the full training set for the artifact that actually ships.
                 final_model.fit(X_train, y_train)
-
+ 
                 train_metrics = self._compute_metrics(final_model, X_train, y_train, threshold)
                 test_metrics = self._compute_metrics(final_model, X_test, y_test, threshold)
                 logging.info(f"Train metrics: {train_metrics}")
@@ -344,23 +407,26 @@ class ModelTrainer:
                     "feature_columns": self.data_transformation_artifact.feature_columns,
                 }
 
-                mlflow.log_dict(metadata, "model_metadata.json",)
-
-                # ---- Feature importance (RF/LGBM only — LogisticRegression
-                # uses coefficients instead), logged separately for
-                # clinical/interpretability review. ----
+                explain_source = self._get_feature_importance_source(final_model)  # CHANGE: fixed unwrapping
                 importances = None
-                if hasattr(final_model, "feature_importances_"):
-                    importances = final_model.feature_importances_.tolist()
-                elif hasattr(final_model, "coef_"):
-                    importances = final_model.coef_[0].tolist()
+                if explain_source is not None:
+                    if hasattr(explain_source, "feature_importances_"):
+                        importances = explain_source.feature_importances_.tolist()
+                    elif hasattr(explain_source, "coef_"):
+                        importances = explain_source.coef_[0].tolist()
                 if importances is not None:
                     mlflow.log_dict({"feature_importances": importances}, "feature_importance.json")
+                    # CHANGE: also written locally so it's a real DVC output,
+                    # not only an MLflow artifact.
+                    fi_path = os.path.join(self.config.trainer_dir, "feature_importance.json")
+                    os.makedirs(self.config.trainer_dir, exist_ok=True)
+                    with open(fi_path, "w") as f:
+                        json.dump({"feature_importances": importances, "feature_columns": feature_names}, f, indent=4)
 
                 # ---- Confusion matrix at the tuned threshold, for clinical review ----
-                from sklearn.metrics import confusion_matrix
                 os.makedirs(self.config.evaluation_dir, exist_ok=True)
-                preds = (final_model.predict_proba(X_test)[:,1] >= threshold).astype(int)
+                probs = final_model.predict_proba(X_test)[:,1]
+                preds = (probs >= threshold).astype(int)
                 cm = confusion_matrix(y_test, preds)
                 confusion_path = os.path.join(self.config.evaluation_dir, "confusion_matrix.json")
 
@@ -375,14 +441,15 @@ class ModelTrainer:
                 mlflow.log_dict({"confusion_matrix": cm.tolist(), "threshold": threshold}, "confusion_matrix.json")
 
                 # ---- Clinical quality gates — config-driven, not magic numbers ----
+                # ---- Clinical quality gates ---- #
                 gate_failures = []
                 if test_metrics["roc_auc"] < self.config.min_roc_auc:
                     gate_failures.append(f"roc_auc {test_metrics['roc_auc']} < {self.config.min_roc_auc}")
-                if test_metrics["recall"] < self.config.min_recall:
+                if test_metrics["recall"] < self.config.min_recall:  # CHANGE: "recall" key now exists again — this no longer KeyErrors
                     gate_failures.append(f"recall {test_metrics['recall']} < {self.config.min_recall} (screening tools need high recall)")
                 if test_metrics["f1_score"] < self.config.min_f1:
                     gate_failures.append(f"f1_score {test_metrics['f1_score']} < {self.config.min_f1}")
-
+ 
                 score_gap = train_metrics[self.config.target_metric] - test_metrics[self.config.target_metric]
                 if score_gap > self.config.overfitting_threshold:
                     gate_failures.append(
@@ -390,101 +457,64 @@ class ModelTrainer:
                         f"exceeds test ({test_metrics[self.config.target_metric]}) by {score_gap:.4f}, "
                         f"over the {self.config.overfitting_threshold} threshold"
                     )
-
+ 
                 mlflow.set_tag("quality_gate_passed", str(len(gate_failures) == 0))
-
                 if gate_failures:
                     mlflow.set_tag("quality_gate_failures", "; ".join(gate_failures))
                     raise CustomException(f"Model failed quality gates: {gate_failures}", sys)
-
-                # ---- Bundle the fitted preprocessor WITH the classifier as
-                # one Pipeline before this gets logged/saved anywhere.
-                #
-                # Without this, /predict in app/main.py would receive raw
-                # feature values and hand them straight to the classifier,
-                # never applying the SimpleImputer that DataTransformation
-                # fit — training and serving would silently use different
-                # preprocessing the moment that imputer does anything beyond
-                # a no-op (which it currently is, only because this specific
-                # dataset has zero missing values). Bundling them into one
-                # artifact means there is no second file to keep in sync —
-                # `pipeline.predict_proba(raw_input)` always applies the
-                # exact preprocessing fit during training, by construction.
+ 
                 preprocessor = load_object(self.data_transformation_artifact.preprocessor_object_file_path)
-                serving_pipeline = Pipeline(steps=[
-                    ("preprocessor", preprocessor),
-                    ("classifier", final_model),
-                ])
-
-                signature = infer_signature(X_train, serving_pipeline.predict(X_train))
-
-                metadata_path = os.path.join(self.config.trainer_dir, "metadata.json")
+                serving_pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", final_model)])
+ 
+                signature = infer_signature(X_train, serving_pipeline.predict_proba(X_train.head()))
+ 
+                metadata_path = os.path.join(self.config.trainer_dir, "model_metadata.json")
                 os.makedirs(self.config.trainer_dir, exist_ok=True)
                 with open(metadata_path, "w") as f:
                     json.dump(metadata, f, indent=4)
 
-                # # Log normal model first WITHOUT registering
-                # mlflow.sklearn.log_model(
-                #     serving_pipeline,
-                #     artifact_path="model",
-                #     signature=signature,
-                #     input_example=X_train.head(5),
-                # )
-
-
-                # # Add metadata into same artifact location
-                # mlflow.log_artifact(
-                #     metadata_path,
-                #     artifact_path="model"
-                # )
-
-                import tempfile
-                import shutil
-
-                with tempfile.TemporaryDirectory() as tmp_dir:
-
-                    model_dir = os.path.join(tmp_dir, "model")
-
-                    mlflow.sklearn.save_model(
-                        sk_model=serving_pipeline,
-                        path=model_dir,
-                        signature=signature,
-                        input_example=X_train.head(5),
-                    )
-
-                    shutil.copy(
-                        "model_metadata.json",
-                        os.path.join(model_dir, "model_metadata.json")
-                    )
-
-                    mlflow.log_artifacts(
-                        model_dir,
-                        artifact_path="model"
-                    )
-
-                for root, dirs, files in os.walk(model_dir):
-                    logging.info(f"{root}: {files}")
-                # Now register the completed artifact
-                model_uri = f"runs:/{parent_run.info.run_id}/model"
-
-                mlflow.register_model(
-                    model_uri=model_uri,
-                    name=self.config.mlflow_registered_model_name
+                mlflow.sklearn.log_model(
+                    serving_pipeline,
+                    artifact_path="model",
+                    signature=signature,
+                    input_example=X_train.head(5),
+                    metadata=metadata,
                 )
+                mlflow.log_artifact(metadata_path, artifact_path="model",)
+ 
+                # # Local copy for DVC tracking / offline inspection — separate
+                # # concern from the MLflow-side metadata= mechanism above.
+                # metadata_path = os.path.join(self.config.trainer_dir, "model_metadata.json")
+                # os.makedirs(self.config.trainer_dir, exist_ok=True)
+                # with open(metadata_path, "w") as f:
+                #     json.dump(metadata, f, indent=4)
+ 
+                model_uri = f"runs:/{parent_run.info.run_id}/model"
+                registered_model = mlflow.register_model(model_uri=model_uri, name=self.config.mlflow_registered_model_name)
 
+                logging.info(
+                    f"Registered model: {registered_model.name} "
+                    f"Version: {registered_model.version}"
+                )
+                                
+                # CHANGE (confirmed intentional, not a bug): no alias is set
+                # here. Setting @champion at training time would bypass
+                # ModelEvaluation's quality gate + ModelPusher's precision
+                # guard entirely — every trained model would become champion
+                # regardless of whether it's actually better. ModelPusher is
+                # correctly the only place that assigns the alias, and only
+                # after ModelEvaluation approves it.
+ 
                 run_id = parent_run.info.run_id
-
                 mlflow.set_tag("task", "diabetes-risk-classification")
                 mlflow.set_tag("framework", "scikit-learn")
                 mlflow.set_tag("deployment_ready", "true")
-            
+ 
             logging.info(
-                f"Model training completed | "
-                f"algorithm={model_type} | "
-                f"threshold={threshold:.3f} | "
-                f"run_id={run_id}"
+                f"Model training completed | algorithm={model_type} | "
+                f"threshold={threshold:.3f} | run_id={run_id}"
             )
-
+ 
             return ModelTrainerArtifact(
                 train_metrics=train_metrics,
                 test_metrics=test_metrics,
@@ -492,6 +522,8 @@ class ModelTrainer:
                 best_hyperparameters=final_params,
                 model_type=model_type,
                 decision_threshold=threshold,
+                registered_model_name=registered_model.name,
+                model_version=str(registered_model.version),
             )
         except CustomException:
             raise
