@@ -1,9 +1,12 @@
-import sys
-import os
 import json
+import os
+import subprocess
+import sys
+ 
 import mlflow
+from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
-
+ 
 from diabetes_risk_prediction.entity.artifact_entity import (
     ModelEvaluationArtifact,
     ModelTrainerArtifact,
@@ -37,22 +40,25 @@ class ModelEvaluation:
         return metrics.get(key, default)
 
     def _get_current_production_metrics(self) -> dict | None:
+        """
+        Returns the current @champion's test metrics, or None if there is
+        genuinely no champion registered yet (expected on the very first
+        training run — this is the only case that should auto-accept).
+        """
+        client = MlflowClient()
         try:
-            mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
-            client = MlflowClient()
-
-            # Note: get_latest_versions(stages=...) is deprecated as of
-            # MLflow 2.9 in favor of aliases (e.g. "@champion"). Left as-is
-            # since model_pusher.py still uses transition_model_version_stage
-            # — migrate both together if you move to the alias API, not
-            # just this side.
-            # versions = client.get_latest_versions(self.config.mlflow_registered_model_name, stages=["Production"])
-            versions = client.get_model_version_by_alias(self.config.mlflow_registered_model_name, "champion",)
-            if not versions:
-                logging.info("No Production model found — first model will be accepted by default.")
-                return None
-
-            run = client.get_run(versions[0].run_id)
+            # CHANGE: get_model_version_by_alias returns a single ModelVersion
+            # object, not a list. The previous code did `versions[0].run_id`,
+            # which raised TypeError on every call where a champion actually
+            # existed — silently caught by the broad except below, always
+            # returning None, which meant every challenger was auto-accepted
+            # regardless of quality. This was the highest-severity bug here:
+            # the quality gate was never actually being enforced in practice.
+            version_info = client.get_model_version_by_alias(
+                self.config.mlflow_registered_model_name,
+                self.config.mlflow_model_alias,  # CHANGE: use config value, not hardcoded "champion"
+            )
+            run = client.get_run(version_info.run_id)  # CHANGE: no indexing — this is one object
             metrics = run.data.metrics
             return {
                 "roc_auc": self._safe_get(metrics, "test_roc_auc"),
@@ -60,9 +66,29 @@ class ModelEvaluation:
                 "recall": self._safe_get(metrics, "test_recall"),
                 "precision": self._safe_get(metrics, "test_precision"),
             }
+        except MlflowException as e:
+            # CHANGE: narrowed from a bare `except Exception` to specifically
+            # MlflowException here. An alias that genuinely doesn't exist yet
+            # raises this — that's the real "first model ever" case, and the
+            # only case that should return None. A connection error, auth
+            # failure, or malformed response is a different, more serious
+            # problem and should NOT be silently treated as "no baseline."
+            if "not found" in str(e).lower() or "RESOURCE_DOES_NOT_EXIST" in str(e):
+                logging.info(
+                    f"No '{self.config.mlflow_model_alias}' alias found for "
+                    f"'{self.config.mlflow_registered_model_name}' — treating as first model."
+                )
+                return None
+            # CHANGE: any other MLflow-side error (auth, malformed response,
+            # etc.) is now re-raised rather than silently swallowed — a
+            # broken comparison should fail the pipeline loudly, not quietly
+            # let an unvalidated model through.
+            raise CustomException(f"MLflow error while fetching current champion metrics: {e}", sys)
         except Exception as e:
-            logging.warning(f"Failed to fetch current Production metrics: {e}")
-            return None
+            # CHANGE: genuine infrastructure failures (network unreachable,
+            # DNS failure, timeout) are also re-raised now instead of being
+            # treated as "no champion" — see rationale above.
+            raise CustomException(f"Failed to reach MLflow while evaluating challenger: {e}", sys)
 
     @staticmethod
     def _compute_score(metrics: dict) -> float:
@@ -82,7 +108,16 @@ class ModelEvaluation:
                 f"exceeding the {self.config.max_precision_regression:.0%} guard"
             )
         return True, ""
-
+    @staticmethod
+    def _current_git_sha() -> str:
+        # CHANGE: new — every evaluation record now carries the exact code
+        # version that produced it. Cheap, and closes one of the traceability
+        # gaps flagged earlier (git SHA in artifact metadata).
+        try:
+            return subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
+        except Exception:
+            return "unknown"
+        
     def initiate_model_evaluation(self) -> ModelEvaluationArtifact:
         try:
             logging.info("Starting model evaluation.")
@@ -101,7 +136,8 @@ class ModelEvaluation:
                 "precision": self._safe_get(raw_new_metrics, "precision"),
             }
             current_metrics = self._get_current_production_metrics()
-
+            rejection_reasons = []  # captured and persisted for audit, not just logged
+ 
             if current_metrics is None:
                 is_accepted = True
                 improved_score = self._compute_score(new_metrics)
@@ -109,22 +145,29 @@ class ModelEvaluation:
             else:
                 score_delta = self._compute_score(new_metrics) - self._compute_score(current_metrics)
                 score_ok = score_delta > self.config.changed_threshold_score
+                if not score_ok:
+                    rejection_reasons.append(
+                        f"composite score delta {score_delta:.4f} did not exceed "
+                        f"threshold {self.config.changed_threshold_score}"
+                    )
 
                 precision_ok, precision_reason = self._passes_precision_guard(new_metrics, current_metrics)
+                if not precision_ok:
+                    rejection_reasons.append(precision_reason)
+
                 is_accepted = score_ok and precision_ok
                 improved_score = score_delta
-
+                
                 logging.info(
                     f"New composite score delta: {score_delta:.4f} (threshold: {self.config.changed_threshold_score}) | "
                     f"Precision guard passed: {precision_ok}"
                     + (f" — {precision_reason}" if not precision_ok else "")
                     + f" | Accepted: {is_accepted}"
                 )
-                logging.info(f"New metrics: {new_metrics} | Current Production metrics: {current_metrics}")
+                logging.info(f"New metrics: {new_metrics} | Current champion metrics: {current_metrics}")
             
             evaluation_dir = self.config.evaluation_dir
             os.makedirs(evaluation_dir, exist_ok=True)
-
             metrics_path = os.path.join(evaluation_dir, "metrics.json")
 
             with open(metrics_path, "w") as f:
@@ -133,7 +176,10 @@ class ModelEvaluation:
                         "model_accepted": is_accepted,
                         "improved_score": improved_score,
                         "trained_metrics": new_metrics,
-                        "production_metrics": current_metrics
+                        "champion_metrics": current_metrics,
+                        "rejection_reasons": rejection_reasons,  # auditable, not just log-only
+                        "mlflow_run_id": self.model_trainer_artifact.mlflow_run_id,  # traceability
+                        "git_commit": self._current_git_sha(),  # traceability
                     },
                     f, indent=4)
 

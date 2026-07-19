@@ -41,13 +41,15 @@ def resolve_env(value):
 
 @dataclass
 class ModelTrainerConfig:
-    random_state: int = 24
     trainer_dir: str = params["artifacts"]["trainer_dir"]
-    evaluation_dir: str = params["artifacts"]["evaluation_dir"]   
+    trained_model_file_name: str = "model.pkl"
+    random_state: int = 24
+    evaluation_dir: str = params["artifacts"]["evaluation_dir"]
+
+    candidate_algorithms: list = field(default_factory=lambda: params["model_training"]["candidate_algorithms"])
     n_trials: int = params["model_training"]["n_trials"]
     cv_folds: int = params["model_training"]["cv_folds"]
     cv_metric: str = params["model_training"]["cv_metric"]
-    candidate_algorithms: list = field(default_factory=lambda: params["model_training"]["candidate_algorithms"])
     enable_pruning: bool = params["model_training"]["enable_pruning"]
     calibrate_probabilities: bool = params["model_training"]["calibrate_probabilities"]
     target_recall_floor: float = params["threshold"]["target_recall_floor"]
@@ -101,18 +103,12 @@ class ModelTrainerConfig:
 @dataclass
 class ModelEvaluationConfig:
     evaluation_dir: str = "artifacts/model_evaluation"
-    changed_threshold_score: float = 0.01  # new model must beat current Production by at least this much
-    # Guards against a composite score improving purely by recall gains
-    # while precision quietly collapses (e.g. a near-always-positive model
-    # scores high recall trivially) — reject the challenger if precision
-    # regresses by more than this fraction versus current Production, even
-    # if the weighted score looks better overall.
-    max_precision_regression: float = 0.10
-    mlflow_tracking_uri: str = params["mlflow"]["tracking_uri"]
-    mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
-
     changed_threshold_score: float = params["evaluation"]["changed_threshold_score"]
     max_precision_regression: float = params["evaluation"]["max_precision_regression"]
+
+    mlflow_tracking_uri: str = params["mlflow"]["tracking_uri"]
+    mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
+    mlflow_model_alias: str = params["mlflow"]["model_alias"]
 
 
 # @dataclass

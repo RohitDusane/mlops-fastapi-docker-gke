@@ -3,21 +3,33 @@ stages:
     cmd: python src/diabetes_risk_prediction/pipeline/training_pipeline.py
     deps:
       - data/raw/raw_data.csv
-      - src
+      - src/diabetes_risk_prediction
       - configs/params.yaml
+      - configs/schema.yaml
     params:
       - configs/params.yaml:
           - model_training
           - threshold
           - quality_gate
           - evaluation
-          - mlflow
+          # - mlflow
+    outs:
+      - artifacts/model_trainer/model.pkl
+      - artifacts/model_trainer/metadata.json
     metrics:
+      - artifacts/model_trainer/train_metrics.json:
+          cache: false
+      - artifacts/model_trainer/test_metrics.json:
+          cache: false
       - artifacts/model_evaluation/metrics.json:
           cache: false
     plots:
-      - artifacts/model_evaluation/confusion_matrix.json:
+      - artifacts/model_trainer/confusion_matrix.json:
           cache: false
           template: confusion
           x: predicted
           y: actual
+      - artifacts/model_trainer/feature_importance.json:
+          cache: false
+          x: importance
+          y: feature

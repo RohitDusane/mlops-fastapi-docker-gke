@@ -344,7 +344,7 @@ class ModelTrainer:
                     "feature_columns": self.data_transformation_artifact.feature_columns,
                 }
 
-                # mlflow.log_dict(metadata, "model_metadata.json",)
+                mlflow.log_dict(metadata, "model_metadata.json",)
 
                 # ---- Feature importance (RF/LGBM only — LogisticRegression
                 # uses coefficients instead), logged separately for
@@ -418,8 +418,8 @@ class ModelTrainer:
 
                 signature = infer_signature(X_train, serving_pipeline.predict(X_train))
 
-                metadata_path = "model_metadata.json"
-
+                metadata_path = os.path.join(self.config.trainer_dir, "metadata.json")
+                os.makedirs(self.config.trainer_dir, exist_ok=True)
                 with open(metadata_path, "w") as f:
                     json.dump(metadata, f, indent=4)
 
