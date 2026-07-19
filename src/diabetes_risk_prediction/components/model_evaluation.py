@@ -46,7 +46,8 @@ class ModelEvaluation:
             # since model_pusher.py still uses transition_model_version_stage
             # — migrate both together if you move to the alias API, not
             # just this side.
-            versions = client.get_latest_versions(self.config.mlflow_registered_model_name, stages=["Production"])
+            # versions = client.get_latest_versions(self.config.mlflow_registered_model_name, stages=["Production"])
+            versions = client.get_model_version_by_alias(self.config.mlflow_registered_model_name, "champion",)
             if not versions:
                 logging.info("No Production model found — first model will be accepted by default.")
                 return None

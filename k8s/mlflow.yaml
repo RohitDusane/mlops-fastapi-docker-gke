@@ -9,13 +9,9 @@ metadata:
   name: mlflow-data-pvc
   namespace: mlflow
 spec:
-  # k3s installs the "local-path" StorageClass by default — backed by a
-  # directory on the node's own disk, no EBS CSI driver or S3 needed. This
-  # is the same cost-vs-durability tradeoff as before: fine for one node,
-  # gone if the node is replaced. Snapshot the EC2 instance's EBS volume
-  # periodically if this data matters beyond a demo.
   storageClassName: local-path
-  accessModes: ["ReadWriteOnce"]
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
       storage: 3Gi
@@ -26,7 +22,7 @@ metadata:
   name: mlflow
   namespace: mlflow
 spec:
-  replicas: 1   # SQLite backend — do not scale beyond 1 replica
+  replicas: 1
   selector:
     matchLabels:
       app: mlflow
@@ -37,20 +33,28 @@ spec:
     spec:
       containers:
         - name: mlflow
-          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/mlflow-server:v2
-          # image: python:3.11-slim
-          # command:
-          #   - sh
-          #   - -c
-          #   - >
-          #     pip install --no-cache-dir mlflow==2.17.0 &&
-          #     mlflow server
-          #     --backend-store-uri sqlite:////mlflow-data/mlflow.db
-          #     --default-artifact-root /mlflow-data/artifacts
-          #     --host 0.0.0.0 --port 5000
-          #     --workers 1
+          image: python:3.11-slim
+          command:
+            - sh
+            - -c
+            - |
+              pip install --no-cache-dir mlflow==2.17.0 && \
+              mlflow server \
+                --backend-store-uri sqlite:////mlflow-data/mlflow.db \
+                --default-artifact-root /mlflow-data/artifacts \
+                --host 0.0.0.0 \
+                --port 5000 \
+                --workers 1
           ports:
             - containerPort: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            failureThreshold: 6
+            
           volumeMounts:
             - name: mlflow-data
               mountPath: /mlflow-data
@@ -61,6 +65,8 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "500m"
+            
+
       volumes:
         - name: mlflow-data
           persistentVolumeClaim:
@@ -77,4 +83,4 @@ spec:
   ports:
     - port: 5000
       targetPort: 5000
-  type: ClusterIP   # internal only — the app reaches it via cluster DNS, nothing external needed
+  type: ClusterIP

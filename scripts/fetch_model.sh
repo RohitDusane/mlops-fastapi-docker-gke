@@ -3,8 +3,8 @@
 # Called by K8s initContainer to pull model from S3 before API starts
 
 set -e
-
-MODEL_S3_PATH=${MODEL_S3_PATH:-"s3://your-mlops-bucket-uae/models/latest/model.pkl"}
+MODEL_S3_PATH=${MODEL_S3_PATH:-"s3://diabetes-app-dvc-146637284455/models/latest/model.pkl"}
+# MODEL_S3_PATH=${MODEL_S3_PATH:-"s3://your-mlops-bucket-uae/models/latest/model.pkl"}
 LOCAL_PATH=${MODEL_PATH:-"/app/artifacts/model.pkl"}
 
 echo "Fetching model from S3: ${MODEL_S3_PATH}"

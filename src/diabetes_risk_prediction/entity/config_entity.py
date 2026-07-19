@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 import yaml
+import os
+from dotenv import load_dotenv
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-
 
 @dataclass
 class DataIngestionConfig:
@@ -12,14 +13,12 @@ class DataIngestionConfig:
     random_state: int = 24
     ingestion_dir: str = "artifacts/ingestion"
 
-
 @dataclass
 class DataValidationConfig:
     schema_path: str = "configs/schema.yaml"
     drift_threshold: float = 0.05
     missing_value_threshold: float = 0.2
     drift_report_dir: str = "artifacts/data_validation"
-
 
 @dataclass
 class DataTransformationConfig:
@@ -28,38 +27,36 @@ class DataTransformationConfig:
     target_column: str = "Diabetes_binary"
 
 # load params
-params = yaml.safe_load(open("configs/params.yaml"))
+# params = yaml.safe_load(open("configs/params.yaml"))
+load_dotenv()
 
+with open("configs/params.yaml") as f:
+    params = yaml.safe_load(f)
+
+
+def resolve_env(value):
+    if isinstance(value, str):
+        return os.path.expandvars(value)
+    return value
 
 @dataclass
 class ModelTrainerConfig:
-
     random_state: int = 24
-
     trainer_dir: str = params["artifacts"]["trainer_dir"]
-    evaluation_dir: str = params["artifacts"]["evaluation_dir"]
-    
+    evaluation_dir: str = params["artifacts"]["evaluation_dir"]   
     n_trials: int = params["model_training"]["n_trials"]
     cv_folds: int = params["model_training"]["cv_folds"]
     cv_metric: str = params["model_training"]["cv_metric"]
-
-    candidate_algorithms: list = field(
-        default_factory=lambda: params["model_training"]["candidate_algorithms"]
-    )
-
+    candidate_algorithms: list = field(default_factory=lambda: params["model_training"]["candidate_algorithms"])
     enable_pruning: bool = params["model_training"]["enable_pruning"]
     calibrate_probabilities: bool = params["model_training"]["calibrate_probabilities"]
-    
     target_recall_floor: float = params["threshold"]["target_recall_floor"]
-
     min_roc_auc: float = params["quality_gate"]["min_roc_auc"]
     min_recall: float = params["quality_gate"]["min_recall"]
     min_f1: float = params["quality_gate"]["min_f1"]
-
     overfitting_threshold: float = params["quality_gate"]["overfitting_threshold"]
     target_metric: str = params["quality_gate"]["target_metric"]
-
-    mlflow_tracking_uri: str = params["mlflow"]["tracking_uri"]
+    mlflow_tracking_uri: str = resolve_env(params["mlflow"]["tracking_uri"])
     mlflow_experiment_name: str = params["mlflow"]["experiment_name"]
     mlflow_registered_model_name: str = params["mlflow"]["registered_model_name"]
 
