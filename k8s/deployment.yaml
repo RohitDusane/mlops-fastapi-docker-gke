@@ -22,30 +22,10 @@ spec:
         - name: ecr-pull-secret
       containers:
         - name: diabetes-api
-          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v1.0.1
+          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-
-          # env:
-
-          #   # Application reads model from MLflow registry
-          #   - name: MODEL_SOURCE
-          #     value: "mlflow"
-
-
-          #   # # MLflow inside cluster
-          #   # - name: MLFLOW_TRACKING_URI
-          #   #   value: "http://mlflow.mlflow.svc.cluster.local:5000"
-
-
-          #   # - name: MLFLOW_MODEL_NAME
-          #   #   value: "diabetes-risk-model"
-
-
-          #   # - name: MLFLOW_MODEL_STAGE
-          #   #   value: "Production"
-
           env:
             - name: MODEL_SOURCE
               value: "mlflow"
