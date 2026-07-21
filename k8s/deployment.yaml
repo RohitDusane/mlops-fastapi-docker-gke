@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: diabetes-api
+  name: diabetes-api~~
   labels:
     app: diabetes-api
 

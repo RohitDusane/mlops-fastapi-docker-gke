@@ -17,7 +17,7 @@ model_training:
   # ---- Threshold tuning (decision threshold ≠ 0.5 for imbalanced screening) ----
   target_recall_floor: 0.80      # tune threshold to the highest cutoff that still meets this recall
   calibrate_probabilities: False  # set True to wrap the final model in CalibratedClassifierCV first
-
+threshold: 0.49542214350854874
 quality_gate:
   min_roc_auc: 0.80
   min_recall: 0.70               # false negatives are the costly error in a screening tool
