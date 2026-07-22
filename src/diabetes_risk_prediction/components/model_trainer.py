@@ -386,6 +386,21 @@ class ModelTrainer:
                 logging.info(f"Train metrics: {train_metrics}")
                 logging.info(f"Test metrics: {test_metrics}")
 
+                # Save metrics for DVC tracking
+                os.makedirs(self.config.trainer_dir, exist_ok=True)
+
+                train_metrics_path = os.path.join(self.config.trainer_dir, "train_metrics.json")
+                test_metrics_path = os.path.join(self.config.trainer_dir, "test_metrics.json")
+
+                with open(train_metrics_path, "w") as f:
+                    json.dump(train_metrics, f, indent=4)
+
+                with open(test_metrics_path, "w") as f:
+                    json.dump(test_metrics, f, indent=4)
+
+                logging.info(f"Train metrics saved: {train_metrics_path}")
+                logging.info(f"Test metrics saved: {test_metrics_path}")
+
                 # Log everything BEFORE the quality gates — a run that fails
                 # a gate still shows up in MLflow with full metrics attached,
                 # instead of an empty run with no clue why it was rejected.
