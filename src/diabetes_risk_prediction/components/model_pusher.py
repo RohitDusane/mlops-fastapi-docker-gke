@@ -70,7 +70,10 @@ class ModelPusher:
         try:
             if not self.model_evaluation_artifact.is_model_accepted:
                 logging.info("Model rejected by evaluation — skipping promotion.")
-                return ModelPusherArtifact(is_model_pushed=False, mlflow_model_version=None,)
+                return ModelPusherArtifact(
+                    is_model_pushed=False, mlflow_model_version=None,
+                    alias=self.config.mlflow_model_alias,
+                    registered_model_name=self.config.mlflow_registered_model_name,)
 
             # mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
             client = MlflowClient(tracking_uri=self.config.mlflow_tracking_uri)
