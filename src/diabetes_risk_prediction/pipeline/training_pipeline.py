@@ -8,7 +8,6 @@ End-to-end orchestration:
 Run:
     python -m diabetes_risk_prediction.pipeline.training_pipeline
 """
-
 import sys
 
 from diabetes_risk_prediction.components.data_ingestion import DataIngestion

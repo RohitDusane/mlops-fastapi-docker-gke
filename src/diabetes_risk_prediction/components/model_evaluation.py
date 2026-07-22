@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import numpy as np
  
 import mlflow
 from mlflow.exceptions import MlflowException
@@ -140,6 +141,22 @@ class ModelEvaluation:
             return subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL).decode().strip()
         except Exception:
             return "unknown"
+
+    
+    @staticmethod
+    def _make_json_serializable(obj):
+        if isinstance(obj, dict):
+            return {k: ModelEvaluation._make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [ModelEvaluation._make_json_serializable(v) for v in obj]
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        else:
+            return obj
         
     def initiate_model_evaluation(self) -> ModelEvaluationArtifact:
         try:
@@ -205,19 +222,23 @@ class ModelEvaluation:
 
             with open(metrics_path, "w") as f:
                 json.dump(
-                    {
-                        "model_accepted": is_accepted,
-                        "improved_score": improved_score,
-                        "trained_metrics": new_metrics,
-                        "champion_metrics": current_metrics,
-                        "rejection_reasons": rejection_reasons,  # auditable, not just log-only
-                        "mlflow_run_id": self.model_trainer_artifact.mlflow_run_id,  # traceability
-                        "registered_model_name": self.config.mlflow_registered_model_name,
-                        "alias": self.config.mlflow_model_alias,
-                        "git_commit": self._current_git_sha(),  # traceability,
-                        "evaluated_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                    f, indent=4)
+                    self._make_json_serializable(
+                        {
+                            "model_accepted": is_accepted,
+                            "improved_score": improved_score,
+                            "trained_metrics": new_metrics,
+                            "champion_metrics": current_metrics,
+                            "rejection_reasons": rejection_reasons,
+                            "mlflow_run_id": self.model_trainer_artifact.mlflow_run_id,
+                            "registered_model_name": self.config.mlflow_registered_model_name,
+                            "alias": self.config.mlflow_model_alias,
+                            "git_commit": self._current_git_sha(),
+                            "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    ),
+                    f,
+                    indent=4
+                )
 
             logging.info(f"Evaluation metrics saved: {metrics_path}")
 
