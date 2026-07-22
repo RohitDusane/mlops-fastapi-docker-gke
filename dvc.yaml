@@ -13,9 +13,6 @@ stages:
           - quality_gate
           - evaluation
           # - mlflow
-    outs:
-      - artifacts/model_trainer/model.pkl
-      - artifacts/model_trainer/metadata.json
     metrics:
       - artifacts/model_trainer/train_metrics.json:
           cache: false
@@ -24,7 +21,7 @@ stages:
       - artifacts/model_evaluation/metrics.json:
           cache: false
     plots:
-      - artifacts/model_trainer/confusion_matrix.json:
+      - artifacts/model_evaluation/confusion_matrix.json:
           cache: false
           template: confusion
           x: predicted
