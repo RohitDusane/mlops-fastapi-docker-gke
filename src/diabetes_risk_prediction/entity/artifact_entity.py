@@ -72,6 +72,6 @@ class ModelEvaluationArtifact:
 class ModelPusherArtifact:
     is_model_pushed: bool
     mlflow_model_version: Optional[str]
-    alias: str
-    registered_model_name: str
+    alias: Optional[str] = None
+    registered_model_name: Optional[str] = None
     # saved_model_path: str
