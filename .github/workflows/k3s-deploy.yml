@@ -61,11 +61,11 @@ jobs:
 
 
     outputs:
-      image_tag:
-        value: ${{ steps.version.outputs.tag }}
+      image_tag: ${{ steps.version.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4
+      
       - name: Generate Image Tag
         id: version
         run: |
