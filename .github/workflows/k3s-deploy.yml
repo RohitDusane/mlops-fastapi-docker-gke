@@ -3,7 +3,7 @@ name: Deploy Diabetes Risk API - k3s AWS EC2
 on:
   push:
     branches:
-      - main
+      - ver/new_upgrade
 
   workflow_dispatch:
 
