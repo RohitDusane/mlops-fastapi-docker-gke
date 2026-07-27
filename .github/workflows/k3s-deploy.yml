@@ -37,17 +37,18 @@ jobs:
 
 
       - name: Install dependencies
-        run:
+        run: |
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
 
       - name: Ruff
-        run:
+        run: |
           ruff check .
 
 
       - name: Pytest
-        run:
+        run: |
           pytest tests/ -v
 
 ################################################
@@ -65,7 +66,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Generate Image Tag
         id: version
         run: |
