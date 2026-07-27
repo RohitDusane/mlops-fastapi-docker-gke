@@ -32,16 +32,25 @@ spec:
         app: diabetes-api
 
     spec:
+      terminationGracePeriodSeconds: 30
+
       imagePullSecrets:
-        - name: ecr-pull-secret
+        - name: ecr-pull-secret    
 
       containers:
         - name: diabetes-api
           image: placeholder
           # # image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v7
           # image: ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/ECR_REPO:v7
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 5
+            
           ports:
             - containerPort: 8000
 
