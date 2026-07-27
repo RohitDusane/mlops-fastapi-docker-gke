@@ -67,8 +67,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Non-root user — REQUIRED for EKS security policies
-RUN groupadd -r fastapi && \
-    useradd -r -g fastapi fastapi
+RUN groupadd -g 1000 fastapi && \
+    useradd -u 1000 -g 1000 -m fastapi
+
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
@@ -87,7 +88,7 @@ RUN chmod +x ./scripts/fetch_model.sh
 #     chmod -R 755 /app
 RUN mkdir -p artifacts logs && chown -R fastapi:fastapi artifacts logs
 
-USER fastapi
+USER 1000:1000
 
 EXPOSE 8000
 
