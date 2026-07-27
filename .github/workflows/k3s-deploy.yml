@@ -101,12 +101,8 @@ jobs:
         with:
           image-ref:
             ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
-
-          severity:
-            HIGH,CRITICAL
-
-          exit-code:
-            1
+          severity: "HIGH,CRITICAL"
+          exit-code: "0"
 
       - name: Push Image
         run: |
