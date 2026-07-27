@@ -3,7 +3,11 @@ kind: Deployment
 
 metadata:
   name: diabetes-api
-  namespace: default
+  namespace: diabetes-prod
+
+  # annotations:
+  #   deployment.kubernetes.io/revision: "${IMAGE_TAG}"
+
   labels:
     app: diabetes-api
 
@@ -17,6 +21,7 @@ spec:
 
   strategy:
     type: RollingUpdate
+    
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
@@ -32,10 +37,10 @@ spec:
 
       containers:
         - name: diabetes-api
-
-          # image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v7
-          image: ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/ECR_REPO:v7
-          imagePullPolicy: IfNotPresent
+          image: placeholder
+          # # image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v7
+          # image: ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/ECR_REPO:v7
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8000
