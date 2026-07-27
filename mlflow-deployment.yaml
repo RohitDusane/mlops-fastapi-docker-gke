@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+  namespace: mlflow
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: mlflow
+
+  template:
+    metadata:
+      labels:
+        app: mlflow
+
+    spec:
+      containers:
+      - name: mlflow
+        image: python:3.11-slim
+
+        command:
+        - sh
+        - -c
+        - |
+          pip install --no-cache-dir mlflow==2.17.0 && \
+          mlflow server \
+            --backend-store-uri sqlite:////mlflow-data/mlflow.db \
+            --serve-artifacts \
+            --artifacts-destination /mlflow-data/artifacts \
+            --default-artifact-root mlflow-artifacts:/ \
+            --host 0.0.0.0 \
+            --port 5000 \
+            --workers 1
+        ports:
+        - containerPort: 5000
+
+        volumeMounts:
+        - name: mlflow-data
+          mountPath: /mlflow-data
+
+      volumes:
+      - name: mlflow-data
+        persistentVolumeClaim:
+          claimName: mlflow-data-pvc

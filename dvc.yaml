@@ -25,7 +25,7 @@ stages:
           cache: false
           template: confusion
           x: predicted
-          y: actual
+          y: actuali
       - artifacts/model_trainer/feature_importance.json:
           cache: false
           x: importance
