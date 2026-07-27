@@ -33,7 +33,8 @@ spec:
       containers:
         - name: diabetes-api
 
-          image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v7
+          # image: 146637284455.dkr.ecr.us-east-1.amazonaws.com/db-risk-app:v7
+          image: ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/ECR_REPO:v7
           imagePullPolicy: IfNotPresent
 
           ports:

@@ -1,0 +1,148 @@
+name: Deploy Diabetes Risk API - k3s AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: diabetes-app
+  K8S_DEPLOYMENT: diabetes-api
+  K8S_CONTAINER: diabetes-api
+
+jobs:
+################################################
+# 1. TEST
+################################################
+  test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+
+      - name: Install dependencies
+        run:
+          pip install -r requirements.txt
+
+
+      - name: Ruff
+        run:
+          ruff check .
+
+
+      - name: Pytest
+        run:
+          pytest tests/ -v
+
+################################################
+# 2. BUILD IMAGE
+################################################
+  build:
+    name: Build Scan Push Image
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+
+    outputs:
+      image_tag:
+        value: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Image Tag
+        id: version
+        run: |
+          echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+
+      - name: AWS Login
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume:
+            arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+
+          aws-region:
+            ${{env.AWS_REGION}}
+
+
+      - name: Login ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+
+      - name: Build Docker image
+        run: |
+          docker build \
+          -t ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}} .
+
+
+      - name: Security Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref:
+            ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
+
+          severity:
+            HIGH,CRITICAL
+
+          exit-code:
+            1
+
+      - name: Push Image
+        run: |
+          docker push \
+          ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
+
+################################################
+# 3. DEPLOY TO k3s
+################################################
+
+  deploy:
+    name: Deploy k3s
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      production
+
+    steps:
+      - name: AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume:
+            arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+          aws-region:
+            ${{env.AWS_REGION}}
+
+
+      - name: Deploy using SSM
+        run: |
+          IMAGE_TAG=${{needs.build.outputs.image_tag}}
+          aws ssm send-command \
+          --instance-ids "${{secrets.EC2_INSTANCE_ID}}" \
+          --document-name "AWS-RunShellScript" \
+          --comment "Deploy diabetes api ${IMAGE_TAG}" \
+          --parameters commands='[
+          "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml",
+          "ACCOUNT=$(aws sts get-caller-identity --query Account --output text)",
+          "IMAGE=$ACCOUNT.dkr.ecr.me-central-1.amazonaws.com/diabetes-app:'${IMAGE_TAG}'",
+          "kubectl set image deployment/diabetes-api diabetes-api=$IMAGE",
+          "kubectl rollout status deployment/diabetes-api --timeout=180s",
+          "kubectl get pods"
+          ]'
+          --region ${{env.AWS_REGION}}
