@@ -4,7 +4,6 @@ import subprocess
 import sys
 import numpy as np
  
-import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from datetime import datetime, timezone

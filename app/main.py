@@ -13,10 +13,8 @@ import json
 import logging
 import time
 import uuid
-import joblib
 from contextlib import asynccontextmanager
 import pandas as pd
-import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware

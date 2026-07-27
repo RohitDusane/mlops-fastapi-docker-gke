@@ -7,7 +7,6 @@ the FastAPI app object.
 """
 
 import logging
-import os
 from pathlib import Path
 # from typing import Optional
 # import json, os
@@ -71,7 +70,6 @@ class ModelState:
         """
         import mlflow
         import mlflow.pyfunc
-        from mlflow.tracking import MlflowClient
         from mlflow.artifacts import download_artifacts
         import json
         import mlflow.lightgbm        

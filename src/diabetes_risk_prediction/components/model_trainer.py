@@ -1,8 +1,6 @@
 import os
 import sys
 import json
-import tempfile
-import shutil
 
 import numpy as np
 import pandas as pd
@@ -10,15 +8,13 @@ import optuna
 import mlflow
 import mlflow.sklearn
 
-from mlflow import MlflowClient
 from mlflow.models.signature import infer_signature
 
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import (StratifiedKFold, cross_val_predict, train_test_split)
+from sklearn.model_selection import (StratifiedKFold, cross_val_predict)
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.calibration import CalibratedClassifierCV
 
 from sklearn.metrics import (
     accuracy_score,

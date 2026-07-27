@@ -1,10 +1,8 @@
 import os
 import sys
 import pandas as pd
-import numpy as np
 # from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
-from dataclasses import dataclass
 from diabetes_risk_prediction.entity.artifact_entity import DataIngestionArtifact
 from diabetes_risk_prediction.entity.config_entity import DataIngestionConfig
 
