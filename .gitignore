@@ -232,3 +232,4 @@ __pycache__/
 .venv/
 venv/
 k8s-deploy.yml
+reader.md

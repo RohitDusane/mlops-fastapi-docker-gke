@@ -54,3 +54,4 @@ pyarrow==23.0.1
 # Build tools
 # ================================
 wheel==0.46.2
+packaging==24.2

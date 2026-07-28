@@ -12,18 +12,24 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc g++ libgomp1 && \
+    libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 # COPY requirements.txt requirements-dev.txt .
 
-RUN pip install --upgrade \
-    pip \
-    setuptools \
-    wheel \
-    --no-cache-dir && \
-    pip install \
+# RUN pip install --upgrade \
+#     pip \
+#     setuptools \
+#     wheel \
+#     packaging \
+#     --no-cache-dir && \
+#     pip install \
+#     --no-cache-dir \
+#     --prefix=/install \
+#     -r requirements.txt
+
+RUN pip install \
     --no-cache-dir \
     --prefix=/install \
     -r requirements.txt
@@ -79,9 +85,10 @@ RUN groupadd -g 1000 fastapi && \
 
 
 # Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# COPY --from=builder /install /usr/local
+COPY --from=builder /install /usr/local/lib/python3.12/site-packages
 
-RUN pip check
+# RUN pip check
 
 # Copy application code only (NOT training code, NOT notebooks)
 COPY --chown=fastapi:fastapi app ./app
