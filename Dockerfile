@@ -86,7 +86,7 @@ RUN groupadd -g 1000 fastapi && \
 
 # Copy installed packages from builder
 # COPY --from=builder /install /usr/local
-COPY --from=builder /install /usr/local/lib/python3.12/site-packages
+COPY --from=builder /install /usr/local
 
 # RUN pip check
 
