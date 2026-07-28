@@ -33,7 +33,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
 
       - name: Install dependencies
@@ -89,25 +89,45 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Build Docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push ARM64 Image
         run: |
-          docker build \
-          -t ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}} .
 
+          IMAGE=${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
+
+          echo "Building:"
+          echo $IMAGE
+
+          docker buildx build \
+            --platform linux/arm64 \
+            --push \
+            --provenance=false \
+            --sbom=false \
+            -t $IMAGE \
+            .
 
       - name: Security Scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref:
-            ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
-          severity: "HIGH,CRITICAL"
-          exit-code: "0"
+          image-ref: ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 0
 
-      - name: Push Image
+      - name: Verify Image Architecture
         run: |
-          docker push \
+          docker buildx imagetools inspect \
           ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
+
+      # - name: Push Image
+      #   run: |
+      #     docker push \
+      #     ${{steps.ecr.outputs.registry}}/${{env.ECR_REPOSITORY}}:${{steps.version.outputs.tag}}
 
 ################################################
 # 3. DEPLOY TO k3s

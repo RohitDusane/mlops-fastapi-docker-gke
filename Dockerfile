@@ -2,7 +2,7 @@
 # Stage 1 : Builder
 #########################################
 
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -18,8 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 # COPY requirements.txt requirements-dev.txt .
 
-RUN pip install --upgrade pip setuptools wheel --no-cache-dir && \
-    pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --upgrade \
+    pip \
+    setuptools \
+    wheel \
+    --no-cache-dir && \
+    pip install \
+    --no-cache-dir \
+    --prefix=/install \
+    -r requirements.txt
 
 # RUN pip install --prefix=/install -r requirements.txt && \
 #     pip install --prefix=/install -r requirements-dev.txt
@@ -38,7 +45,7 @@ RUN find /install -type d -name "__pycache__" -exec rm -rf {} + && \
 # Stage 2 : Runtime
 #########################################
 
-FROM python:3.10-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -63,7 +70,7 @@ WORKDIR /app
 
 # Runtime system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 curl && \
+    libgomp1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Non-root user — REQUIRED for EKS security policies
@@ -73,6 +80,8 @@ RUN groupadd -g 1000 fastapi && \
 
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
+
+RUN pip check
 
 # Copy application code only (NOT training code, NOT notebooks)
 COPY --chown=fastapi:fastapi app ./app
@@ -94,8 +103,7 @@ EXPOSE 8000
 
 # Kubernetes readiness probe calls /health
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-    # CMD wget --no-verbose --tries=1 --spider http://localhost:8000/docs || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
 # Gunicorn + UvicornWorker = production-grade async serving
 CMD ["gunicorn", "app.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--workers", "1", "--bind", "0.0.0.0:8000", "--graceful-timeout", "30", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
